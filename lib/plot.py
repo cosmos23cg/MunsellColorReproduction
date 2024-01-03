@@ -1,31 +1,15 @@
-import colour.difference
 import numpy as np
 import matplotlib.pyplot as plt
-
 
 class MunsellScatter:
     def __init__(self):
         self.fig, self.ax = plt.subplots(figsize=(10, 9))
         self.marker_type = 's'
-        self.s_size = 1600
 
-    @staticmethod
-    def _read_V_C_RGB(munsellObj):
-        value_arr = np.array(munsellObj.HVC()[:, [1]]).astype('int')
-        chroma_arr = np.array(munsellObj.HVC()[:, [2]]).astype('int')
-        RGB_arr = np.array(munsellObj.RGB()).astype('float64') / 255
-        return value_arr, chroma_arr, RGB_arr
+    def _basic_scatter(self, x, y, color):
+        self.ax.scatter(x, y, s=1500, c=color, marker=self.marker_type)
 
-    def _basixScatter(self, x, y, color):
-        self.ax.scatter(
-            x,
-            y,
-            s=self.s_size,
-            c=color,
-            marker=self.marker_type
-        )
-
-    def _scatter_axis(self, title=None) -> None:
+    def _scatter_axis(self, title):
         self.ax.set_xlim(0, 21)
         self.ax.set_ylim(0, 10)
         # ticks
@@ -36,7 +20,9 @@ class MunsellScatter:
         self.ax.tick_params(axis='both', pad=-18, labelsize=14, color="None")
         # label
         x_labels = [f'/{x}' for x in x_ticks]
+        y_labels = [f'{y}/' for y in y_ticks]
         self.ax.set_xticklabels(x_labels)
+        self.ax.set_yticklabels(y_labels)
         # title
         self.ax.set_title(title, fontsize=20)
         # spines
@@ -45,31 +31,36 @@ class MunsellScatter:
         self.ax.spines.right.set_visible(False)
         plt.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.1)
 
-    def scatter(self, munsellObj, title=None):
-        value_arr, chroma_arr, RGB_arr = self._read_V_C_RGB(munsellObj)
-        self._basixScatter(chroma_arr, value_arr, RGB_arr)
+    def scatter(self, val_chroma: list, rgb: list, title: str):
+        val_arr = np.array(val_chroma[:, 0])
+        chroma_arr = np.array(val_chroma[:, 1])
+        rgb_arr = np.array(rgb)
+
+        self._basic_scatter(chroma_arr, val_arr, rgb_arr)
         self._scatter_axis(title)
-        plt.show()
         return self.fig
 
-    def scatterDe(self, com_munsellObj, ref_munsellObj, title=None):
-        value_arr, chroma_arr, RGB_arr = self._read_V_C_RGB(com_munsellObj)
-        de_arr = colour.difference.delta_E_CIE2000(com_munsellObj.Lab(), ref_munsellObj.Lab())
-        face_color = np.where(de_arr > 2.0, '#C5C9C7', 'None')
-        self._basixScatter(chroma_arr, value_arr, RGB_arr)
+    def scatter_de(self, val_chroma: list, rgb: list, de, title):
+        val_arr = np.array(val_chroma[:, 0])
+        chroma_arr = np.array(val_chroma[:, 1])
+        de_arr = np.array(de)
+        face_color = np.where(de_arr > 0, '#C5C5C5', '#696969')
+
+        self._basic_scatter(chroma_arr, val_arr, rgb)
         self.ax.scatter(
             chroma_arr,
-            value_arr,
-            s=1050,
+            val_arr,
+            s=900,
             facecolors=face_color,
             edgecolor='w'
         )
+
         for i in range(len(de_arr)):
-            text_color = 'w' if value_arr[i] <= 4 else 'k'
+            text_color = 'w'
             text_color = 'r' if de_arr[i] > 2.0 else text_color
             self.ax.text(
                 chroma_arr[i],
-                value_arr[i],
+                val_arr[i],
                 round(de_arr[i], 1),
                 c=text_color,
                 ha='center',
@@ -80,6 +71,36 @@ class MunsellScatter:
         return self.fig
 
 
-class CIE1931Diagram:
+class ContourChart:
     def __init__(self):
         pass
+        self.fig, self.ax = plt.subplots(figsize=(10, 9))
+
+    def contourf(self, val_chroma, color_different, title):
+        val_arr = val_chroma[:, 0]
+        chroma_arr = val_chroma[:, 1]
+        dz = np.array(color_different)
+
+        lv = np.linspace(np.min(dz), np.max(dz), 10)
+        cont = self.ax.tricontourf(chroma_arr, val_arr, dz, levels=lv, cmap='Reds')
+
+        self.ax.set_xlim(min(chroma_arr), max(chroma_arr))
+        self.ax.set_ylim(min(val_arr), max(val_arr))
+        self.fig.colorbar(cont, ax=self.ax)
+
+        # Axis setting
+        self.ax.set_title(title)
+        self.ax.set_xlabel('X-axis')
+        self.ax.set_ylabel('Y-axis')
+
+        x_ticks = np.arange(2, 21, 2)
+        self.ax.set_xticks(x_ticks)
+        self.ax.set_xticklabels(f'/{x}' for x in x_ticks)
+        y_ticks = np.arange(1, 10, 1)
+        self.ax.set_yticks(y_ticks)
+        self.ax.set_yticklabels(f'{y}' for y in y_ticks)
+
+        return self.fig
+
+
+# TODO: class CIE1931Diagram
