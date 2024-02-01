@@ -1,3 +1,5 @@
+import math
+
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -32,6 +34,18 @@ class MunsellScatter:
         plt.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.1)
 
     def scatter(self, val_chroma: list, rgb: list, title: str):
+        """
+        Plot the scatter, x-axis: chroma, y-axis: value
+
+        Parameters
+        ----------
+        val_chroma:
+            value and chroma list or array by each hue
+        rgb:
+            rgb list by each hue
+        title:
+            hue name
+        """
         val_arr = np.array(val_chroma[:, 0])
         chroma_arr = np.array(val_chroma[:, 1])
         rgb_arr = np.array(rgb)
@@ -41,6 +55,20 @@ class MunsellScatter:
         return self.fig
 
     def scatter_de(self, val_chroma: list, rgb: list, de, title):
+        """
+        Plot the scatter, x-axis: chroma, y-axis: value
+
+        Parameters
+        ----------
+        val_chroma:
+            value and chroma list or array by each hue
+        rgb:
+            rgb list by each hue
+        de:
+            color differance by each hue
+        title:
+            hue name
+        """
         val_arr = np.array(val_chroma[:, 0])
         chroma_arr = np.array(val_chroma[:, 1])
         de_arr = np.array(de)
@@ -77,6 +105,18 @@ class ContourChart:
         self.fig, self.ax = plt.subplots(figsize=(10, 9))
 
     def contourf(self, val_chroma, color_different, title):
+        """
+        Plot the contour fig
+
+        Parameters
+        ----------
+        val_chroma:
+            value and chroma list or array by each hue
+        color_different:
+            color different list by each hue
+        title:
+            hue name
+        """
         val_arr = val_chroma[:, 0]
         chroma_arr = val_chroma[:, 1]
         dz = np.array(color_different)
@@ -101,6 +141,40 @@ class ContourChart:
         self.ax.set_yticklabels(f'{y}' for y in y_ticks)
 
         return self.fig
+
+
+class Polar:
+    def __init__(self):
+        self.fig, self.ax = plt.subplots()
+        self.hue_num = 40
+        self.angle_step = 360 / self.hue_num
+
+    def rotation(self, coordinate, degree):
+        """
+        caculate the new coordinate by angle
+        """
+        rad = math.radians(degree)
+        rotaion_mat = np.array(
+            [
+                [math.cos(rad), -math.sin(rad)],
+                [math.sin(rad), -math.cos(rad)]
+            ]
+        )
+        rotate_cor = np.dot(rotaion_mat, coordinate)
+        return rotate_cor.tolist()
+
+    def polar(self, val_chroma):
+        """
+
+        Parameters
+        ----------
+        val_chroma:
+            value and chroma list or array by each hue
+        """
+        # use data
+        for i in range(self.hue_num):
+            rotation_cor = self.rotation()
+
 
 
 # TODO: class CIE1931Diagram
