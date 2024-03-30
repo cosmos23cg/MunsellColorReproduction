@@ -3,6 +3,7 @@ import math
 import numpy as np
 import matplotlib.pyplot as plt
 
+
 class MunsellScatter:
     def __init__(self):
         self.fig, self.ax = plt.subplots(figsize=(10, 9))
@@ -154,13 +155,13 @@ class Polar:
         caculate the new coordinate by angle
         """
         rad = math.radians(degree)
-        rotaion_mat = np.array(
+        rotation_mat = np.array(
             [
                 [math.cos(rad), -math.sin(rad)],
                 [math.sin(rad), -math.cos(rad)]
             ]
         )
-        rotate_cor = np.dot(rotaion_mat, coordinate)
+        rotate_cor = np.dot(rotation_mat, coordinate)
         return rotate_cor.tolist()
 
     def polar(self, val_chroma):

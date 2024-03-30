@@ -2,14 +2,16 @@
 name = "munsellcolorreproduction"
 version = "0.1.0"
 description = ""
-authors = ["Chiang Hsiao <chiang7h7@gmail.com>"]
+authors = ["Chiang <chiang7h7@gmail.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
 python = ">=3.11,<3.13"
-numpy = "^1.26.3"
-colour-science = "0.4.4"
+colour-science = "^0.4.4"
 matplotlib = "^3.8.2"
+pymupdf = "^1.23.21"
+easyocr = "^1.7.1"
+opencv-python = "^4.9.0.80"
 
 
 [build-system]

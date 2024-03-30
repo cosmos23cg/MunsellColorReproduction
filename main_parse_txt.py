@@ -10,7 +10,7 @@ class ParseText:
         self.fields = ["H", "V", "C", "R", "G", "B", "L*", "a*", "b*"]
 
     def _sub_files(self):
-        def sort_key(file_path: Path):
+        def sort_key(file_path):
             file_name = file_path.stem
             parts = file_name.split('_')
             return int(parts[1]), int(parts[2].split('.')[0])
@@ -20,7 +20,7 @@ class ParseText:
 
         if self.p.is_dir():
             txt_files = list(self.p.glob('**/*' + '.txt'))
-            sorted_files = sorted(txt_files, key=lambda x:sort_key(x))
+            sorted_files = sorted(txt_files, key=lambda x: sort_key(x))
             return sorted_files
         elif self.p.is_file():
             return [self.p]
@@ -53,6 +53,7 @@ class ParseText:
             writer.writerow(self.fields)
             writer.writerows(input)
 
+
 def main(input_path):
     input_p = Path(input_path)
     for child in input_p.iterdir():
@@ -62,7 +63,7 @@ def main(input_path):
                 file_name = str(name_parts[-2] + name_parts[-1])
                 parse = ParseText(grand_child)
                 data = parse.parseFile()
-                parse.writeCSV('output/'+file_name + '.csv', data)
+                parse.writeCSV('output/' + file_name + '.csv', data)
 
 
 if __name__ == "__main__":

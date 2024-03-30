@@ -63,3 +63,5 @@ munsell_hue_rotation = [
     '5GY', '7.5GY', '10GY', '2.5G', '5G', '7.5G', '10G', '2.5BG', '5BG', '7.5BG', '10BG', '2.5B', '5B', '7.5B',
     '10B', '2.5PB', '5PB', '7.5PB', '10PB', '2.5P', '5P', '7.5P', '10P', '2.5RP', '5RP', '7.5RP'
 ]
+
+munsell_hue_order_dict = {'R': 0, 'YR': 1, 'Y': 2, 'GY': 3, 'G': 4, 'BG': 5, 'B': 6, 'PB': 7, 'P': 8, 'RP': 9}
