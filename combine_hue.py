@@ -1,8 +1,11 @@
+"""
+
+"""
+
 import csv
 import re
 import sys
 from pathlib import Path
-from colour import difference
 from lib import datasets
 
 
@@ -59,8 +62,8 @@ def save_csv(write_path, write_file: dict):
     print(f'File saved at {write_path}')
 
 
-def main(dir):
-    dir_p = Path(dir)
+def main(dir_path):
+    dir_p = Path(dir_path)
 
     combine_csv_ref = CombineCSV()
     ref_dict = combine_csv_ref.read_file(dir_p, '.csv')
