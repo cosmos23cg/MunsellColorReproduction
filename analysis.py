@@ -62,20 +62,26 @@ class ColourComparator(CSVreader):
 
         return list((delta_E_CIE1976(ref_lab, com_lab)))
 
-    def CIE_1976_delta_L(self) -> list:
+    def CIE_1976_delta_L(self, absolute=False) -> list:
         self._check_lst_len()
+
+        if absolute:
+            return [abs(float(x[-3]) - float(y[-3])) for x, y in zip(self.ref_colour_lst, self.com_colour_lst)]
 
         return [float(x[-3]) - float(y[-3]) for x, y in zip(self.ref_colour_lst, self.com_colour_lst)]
 
-    def CIE_1976_delta_Cab(self) -> list:
+    def CIE_1976_delta_Cab(self, absolute=False) -> list:
         self._check_lst_len()
 
         c1 = self._CIE_1976_Cab(self.ref_colour_lst)
         c2 = self._CIE_1976_Cab(self.com_colour_lst)
 
+        if absolute:
+            return [abs(x - y) for x, y in zip(c1, c2)]
+
         return [x - y for x, y in zip(c1, c2)]
 
-    def CIE_1976_delta_Hab(self):
+    def CIE_1976_delta_Hab(self, absolute=False):
         self._check_lst_len()
 
         c1 = self._CIE_1976_Cab(self.ref_colour_lst)
@@ -86,9 +92,10 @@ class ColourComparator(CSVreader):
 
         delta_hab = [x - y for x, y in zip(h1, h2)]
 
-        delta_Hab = [2 * math.sqrt(x * y) * math.sin(z / 2) for x, y, z in zip(c1, c2, delta_hab)]
+        if absolute:
+            return [abs(2 * math.sqrt(x * y) * math.sin(z / 2)) for x, y, z in zip(c1, c2, delta_hab)]
 
-        return delta_Hab
+        return [2 * math.sqrt(x * y) * math.sin(z / 2) for x, y, z in zip(c1, c2, delta_hab)]
 
 
 class HVCAnalyzer:
@@ -160,9 +167,9 @@ def main(ref_path, com_path):
     # Calculate the De2000, delta l*, C_ab, H_ab and merge to
     comparator = ColourComparator(ref_path, com_path)
     de_2000: list = comparator.CIE_2000()
-    de_1976_L: list = comparator.CIE_1976_delta_L()
-    de_1976_Cab: list = comparator.CIE_1976_delta_Cab()
-    de_1976_Hab: list = comparator.CIE_1976_delta_Hab()
+    de_1976_L: list = comparator.CIE_1976_delta_L(absolute=True)
+    de_1976_Cab: list = comparator.CIE_1976_delta_Cab(absolute=True)
+    de_1976_Hab: list = comparator.CIE_1976_delta_Hab(absolute=True)
     output_lst = comparator.com_colour_lst.copy()
     merged_lst = merge_lst(output_lst, de_2000, de_1976_L, de_1976_Cab, de_1976_Hab)
 
@@ -210,7 +217,8 @@ def main(ref_path, com_path):
 
 
 if __name__ == '__main__':
-    parent_path = Path(r"C:\Users\cghsi\OneDrive\NTUST_CIT\Experiments\Munsell_Reproduction")
-    ref_path = parent_path / r"Dataset_BabelColour_HVC_RGB_Lab_D50\Dataset_BabelColour_HVC_RGB_Lab_D50_50_combine.csv"
-    com_path = Path(r"C:\Users\cghsi\OneDrive\NTUST_CIT\Experiments\Munsell_Reproduction\Deepblue\NTUST_50_20240315.csv")
+    ref_path = Path(r"C:\Users\cghsi\OneDrive\NTUST_CIT\Experiments\Munsell_Reproduction"
+                    r"\Dataset_BabelColour_HVC_RGB_Lab_D50\Dataset_BabelColour_HVC_RGB_Lab_D50_50_combine.csv")
+
+    com_path = Path(r"C:\Users\cghsi\OneDrive\NTUST_CIT\Experiments\Munsell_Reproduction\SunSui\SunSui_deReport_CSV\4C-R\4C-R_50_combine.csv")
     main(ref_path, com_path)
