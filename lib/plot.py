@@ -4,6 +4,49 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
+class Gamut:
+    """
+    1. plot single gamut (finished)
+    2. plot multiple gamut via args (finished)
+    3. choose the diagram (CIE xy, CIE 1976Lab, CIE 1976Luv)
+    """
+    def __init__(self):
+        self.points = []
+
+    def add_points(self, points: list, color: str, label:str):
+        """
+        Parameters
+        ----------
+        points:
+            points list
+        color:
+            the color plotted in figure
+        label:
+            label name
+        """
+        self.points.append((points, color, label))
+
+    def plot(self):
+        plt.figure()
+
+        for points, color, label in self.points:
+            x = [point[0] for point in points]
+            y = [point[1] for point in points]
+
+            plt.plot(x, y, color + '-', label=label)  # line
+            plt.plot(x, y, color + 'o')  # point
+
+        plt.grid(which='both', alpha=0.5)
+        plt.xlim(-130, 130)
+        plt.ylim(-130, 130)
+
+        plt.xlabel("a*")
+        plt.ylabel("b*")
+        plt.legend(loc='lower left')
+
+        plt.show()
+
+
 class MunsellScatter:
     def __init__(self):
         self.fig, self.ax = plt.subplots(figsize=(10, 9))
@@ -144,38 +187,53 @@ class ContourChart:
         return self.fig
 
 
-class Polar:
-    def __init__(self):
-        self.fig, self.ax = plt.subplots()
-        self.hue_num = 40
-        self.angle_step = 360 / self.hue_num
+# class Polar:
+#     def __init__(self):
+#         self.fig, self.ax = plt.subplots()
+#         self.hue_num = 40
+#         self.angle_step = 360 / self.hue_num
+#
+#     def rotation(self, coordinate, degree):
+#         """
+#         caculate the new coordinate by angle
+#         """
+#         rad = math.radians(degree)
+#         rotation_mat = np.array(
+#             [
+#                 [math.cos(rad), -math.sin(rad)],
+#                 [math.sin(rad), -math.cos(rad)]
+#             ]
+#         )
+#         rotate_cor = np.dot(rotation_mat, coordinate)
+#         return rotate_cor.tolist()
+#
+#     def polar(self, val_chroma):
+#         """
+#
+#         Parameters
+#         ----------
+#         val_chroma:
+#             value and chroma list or array by each hue
+#         """
+#         # use data
+#         for i in range(self.hue_num):
+#             rotation_cor = self.rotation()
 
-    def rotation(self, coordinate, degree):
-        """
-        caculate the new coordinate by angle
-        """
-        rad = math.radians(degree)
-        rotation_mat = np.array(
-            [
-                [math.cos(rad), -math.sin(rad)],
-                [math.sin(rad), -math.cos(rad)]
-            ]
-        )
-        rotate_cor = np.dot(rotation_mat, coordinate)
-        return rotate_cor.tolist()
 
-    def polar(self, val_chroma):
-        """
-
-        Parameters
-        ----------
-        val_chroma:
-            value and chroma list or array by each hue
-        """
-        # use data
-        for i in range(self.hue_num):
-            rotation_cor = self.rotation()
 
 
 
 # TODO: class CIE1931Diagram
+
+
+if __name__ == '__main__':
+
+    def gamut_test():
+        gamut = Gamut()
+        points1 = [(10, 20), (30, 40), (50, 60), (70, 80), (90, 100)]
+        points2 = [(-10, -20), (-30, -40), (-50, -60), (-70, -80), (-90, -100)]
+        gamut.add_points(points1, color='b', label='tst')
+        gamut.add_points(points2, color='r', label='tst1')
+        gamut.plot()
+
+    gamut_test()
