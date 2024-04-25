@@ -1,0 +1,2 @@
+class PlotFunctionError(Exception):
+    pass
