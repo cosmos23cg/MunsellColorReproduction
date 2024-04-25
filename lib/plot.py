@@ -1,8 +1,8 @@
-import math
+from pathlib import Path
 
 import numpy as np
 import matplotlib.pyplot as plt
-
+from lib.error import PlotFunctionError
 
 class Gamut:
     """
@@ -10,41 +10,137 @@ class Gamut:
     2. plot multiple gamut via args (finished)
     3. choose the diagram (CIE xy, CIE 1976Lab, CIE 1976Luv)
     """
-    def __init__(self):
+    def __init__(self, figsize):
+        self.fig, self.ax = plt.subplots(figsize=figsize)  # Create a figure and axis
         self.points = []
 
-    def add_points(self, points: list, color: str, label:str):
+    def axis_setting(self, xlim=(-130, 130), ylim=(-100, 130)):
+        self.ax.grid(which='both', alpha=0.2)
+        self.ax.set_xlim(xlim[0], xlim[1])
+        self.ax.set_ylim(ylim[0], ylim[1])
+
+        self.ax.set_xlabel("a*")
+        self.ax.set_ylabel("b*")
+        self.ax.legend(loc='lower left')
+
+    def add_points(self, points: list, c: str, ln: str, m: str, lb: str):
         """
         Parameters
         ----------
         points:
-            points list
-        color:
+            points list(points, color, label)
+        c:
             the color plotted in figure
-        label:
+        ln:
+            line symbol
+        m:
+            marker symbol
+        lb:
             label name
         """
-        self.points.append((points, color, label))
+        self.points.append((points, c, ln, m, lb))
 
-    def plot(self):
-        plt.figure()
+    def plot_gamut(self):
+        for points, color, line, marker, label in self.points:
+            x, y = zip(*points)
 
-        for points, color, label in self.points:
-            x = [point[0] for point in points]
-            y = [point[1] for point in points]
+            self.ax.plot(x, y, color + line, label=label)  # line
+            self.ax.plot(x, y, color + marker)  # marker
 
-            plt.plot(x, y, color + '-', label=label)  # line
-            plt.plot(x, y, color + 'o')  # point
+        self.axis_setting()
 
-        plt.grid(which='both', alpha=0.5)
-        plt.xlim(-130, 130)
-        plt.ylim(-130, 130)
+        return self.fig
 
-        plt.xlabel("a*")
-        plt.ylabel("b*")
-        plt.legend(loc='lower left')
 
-        plt.show()
+class Contour:
+    def __init__(self, nrows=1, ncols=1, **kwargs):
+        self.fig, self.axs = plt.subplots(nrows, ncols, **kwargs)
+        self.points = []
+        self.cont = None
+        self.cbar = None
+
+    def _contour_axis_setting(self, cont):
+        # The z number show by legend
+        self.fig.subplots_adjust(right=0.8)
+
+        artists, labels = cont.legend_elements(str_format='{:2.1f}'.format)
+        self.axs[1].legend(artists, labels, handleheight=2, framealpha=1, loc='center left', bbox_to_anchor=(1.1, 0.5))
+
+        # show each z inline
+        # for ax in self.axs:
+        #     ax.clabel(cont, fmt="%2.1f", use_clabeltext=True)
+
+    def _contourf_axis_setting(self, cont, lv):
+        if self.cbar is None:
+            self.fig.subplots_adjust(right=0.8)
+
+            cbar_ax = self.fig.add_axes([0.85, 0.11, 0.02, 0.78])  # setting color bar, (left, bottom, width, height)
+            self.cbar = self.fig.colorbar(cont, cax=cbar_ax, format='%.2f', ticks=lv)
+
+    def add_points(self, x, y, z, lv, cmap, title: str):
+        self.points.append((x, y, z, lv, cmap, title))
+
+    def axis_setting(self, cont, lv, plotm, **kwargs):
+        """
+        parameters
+        ----------
+        plotm:
+            plot method: 'unfilled', 'filled'
+        """
+        # Common settings
+        self.fig.text(0.5, 0.02, 'a*', ha='center', size=12)
+        self.fig.text(0.07, 0.5, 'b*', va='center', size=12, rotation='vertical')
+
+        # sub_figure settings
+        for ax in self.axs:
+            ax.set_aspect(aspect='equal', adjustable='box')
+            ax.grid(True, alpha=0.2)
+
+        # set x, y limit
+        if 'xlim' in kwargs and 'ylim' in kwargs:
+            for ax in self.axs.flat:
+                ax.set_xlim(kwargs['xlim'])
+                ax.set_ylim(kwargs['ylim'])
+
+        # Custom settings
+        if plotm == 'unfilled':
+            self._contour_axis_setting(cont)
+
+        if plotm == 'filled':
+            self._contourf_axis_setting(cont, lv)
+
+    def plot_tricontour(self, main_title, **kwargs):
+        if len(self.points) <= 1:
+            raise PlotFunctionError("self.points have two list more")
+
+        for idx, (x, y, z, lv, cmap, title) in enumerate(self.points):
+            cont = self.axs[idx].tricontour(x, y, z, lv, cmap=cmap)
+            self.axs[idx].set_title(title)
+            self.axis_setting(cont, lv, plotm="unfilled", **kwargs)
+
+        self.fig.suptitle(main_title, y=0.961, ha='center', size=14, weight='bold')
+
+        return self.fig
+
+    def plot_tricontourf(self, main_title, **kwargs):
+        """
+        Plot the contour fig
+
+        Parameters
+        ----------
+
+        """
+        if len(self.points) <= 1:
+            raise PlotFunctionError("self.points have two list more")
+
+        for idx, (x, y, z, lv, cmap, title) in enumerate(self.points):
+            cont = self.axs[idx].tricontourf(x, y, z, lv, cmap=cmap)
+            self.axs[idx].set_title(title)
+            self.axis_setting(cont, lv, plotm='filled',**kwargs)
+
+        self.fig.suptitle(main_title, y=0.961, ha='center', size=14, weight='bold')
+
+        return self.fig
 
 
 class MunsellScatter:
@@ -143,97 +239,7 @@ class MunsellScatter:
         return self.fig
 
 
-class ContourChart:
-    def __init__(self):
-        pass
-        self.fig, self.ax = plt.subplots(figsize=(10, 9))
-
-    def contourf(self, val_chroma, color_different, title):
-        """
-        Plot the contour fig
-
-        Parameters
-        ----------
-        val_chroma:
-            value and chroma list or array by each hue
-        color_different:
-            color different list by each hue
-        title:
-            hue name
-        """
-        val_arr = val_chroma[:, 0]
-        chroma_arr = val_chroma[:, 1]
-        dz = np.array(color_different)
-
-        lv = np.linspace(np.min(dz), np.max(dz), 10)
-        cont = self.ax.tricontourf(chroma_arr, val_arr, dz, levels=lv, cmap='Reds')
-
-        self.ax.set_xlim(min(chroma_arr), max(chroma_arr))
-        self.ax.set_ylim(min(val_arr), max(val_arr))
-        self.fig.colorbar(cont, ax=self.ax)
-
-        # Axis setting
-        self.ax.set_title(title)
-        self.ax.set_xlabel('X-axis')
-        self.ax.set_ylabel('Y-axis')
-
-        x_ticks = np.arange(2, 21, 2)
-        self.ax.set_xticks(x_ticks)
-        self.ax.set_xticklabels(f'/{x}' for x in x_ticks)
-        y_ticks = np.arange(1, 10, 1)
-        self.ax.set_yticks(y_ticks)
-        self.ax.set_yticklabels(f'{y}' for y in y_ticks)
-
-        return self.fig
-
-
-# class Polar:
-#     def __init__(self):
-#         self.fig, self.ax = plt.subplots()
-#         self.hue_num = 40
-#         self.angle_step = 360 / self.hue_num
-#
-#     def rotation(self, coordinate, degree):
-#         """
-#         caculate the new coordinate by angle
-#         """
-#         rad = math.radians(degree)
-#         rotation_mat = np.array(
-#             [
-#                 [math.cos(rad), -math.sin(rad)],
-#                 [math.sin(rad), -math.cos(rad)]
-#             ]
-#         )
-#         rotate_cor = np.dot(rotation_mat, coordinate)
-#         return rotate_cor.tolist()
-#
-#     def polar(self, val_chroma):
-#         """
-#
-#         Parameters
-#         ----------
-#         val_chroma:
-#             value and chroma list or array by each hue
-#         """
-#         # use data
-#         for i in range(self.hue_num):
-#             rotation_cor = self.rotation()
-
-
-
-
-
-# TODO: class CIE1931Diagram
-
-
-if __name__ == '__main__':
-
-    def gamut_test():
-        gamut = Gamut()
-        points1 = [(10, 20), (30, 40), (50, 60), (70, 80), (90, 100)]
-        points2 = [(-10, -20), (-30, -40), (-50, -60), (-70, -80), (-90, -100)]
-        gamut.add_points(points1, color='b', label='tst')
-        gamut.add_points(points2, color='r', label='tst1')
-        gamut.plot()
-
-    gamut_test()
+def save_plt_figure(figure: plt.Figure, write_path, **kwargs):
+    figure.savefig(write_path, **kwargs)
+    print(f"Fig saved: {write_path}")
+    plt.close()

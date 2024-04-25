@@ -8,7 +8,7 @@ from pathlib import Path
 
 import numpy as np
 
-from lib import utilities, plot
+from lib import utilities, plot, data_processing
 
 
 class PlotMunsellScatter:
@@ -90,23 +90,10 @@ class PlotMunsellScatter:
             polar.polar(ref_vc_dict)
 
 
-def plot_gamut(temp_path):
-    def group(lab_lst, col) -> dict:
-        result = {}
-
-        for lab in lab_lst:
-            k = lab[1]
-            result[k] = []
-
-        for lab in lab_lst:
-            k = lab[1]
-            lab_s = [lab[i] for i in col]
-            if k in result:
-                result[k].append(lab_s)
-        return result
-
+def plot_gamut(input_path):
     def max_Cab(lab_lst: list, col: list) -> dict:
-        lab_dict: dict = group(lab_lst, col)
+        # TODO: pre slice the list range
+        lab_dict: dict = data_processing.group_by(lab_lst, group_key=1)
 
         max_dict = {}
         for k in lab_dict.keys():
@@ -119,90 +106,73 @@ def plot_gamut(temp_path):
 
         return max_dict
 
-    def max_Cab_lab(lab_lst: list, col:list) -> list:
+    def max_Cab_lab(lab_lst: list, col: list) -> list:
         Cab_dict = max_Cab(lab_lst, col)
         opt_lst = [(float(value[1]), float(value[2])) for value in Cab_dict.values()]
-        opt_lst.append(opt_lst[0])
+        opt_lst.append(opt_lst[0])  # add the first element let the gamut be lined
 
         return opt_lst
 
+    data_lst = data_processing.read_csv(input_path, 2)
 
-    with open(temp_path, 'r') as csvfile:
-        reader = csv.reader(csvfile)
-        next(reader)
-        next(reader)
-        lab_lst: list = [line for line in reader]
+    ref_points = max_Cab_lab(data_lst, col=[4, 5, 6])
+    toner_4c = max_Cab_lab(data_lst, col=[7, 8, 9])
+    # toner_4c_r = max_Cab_lab(lab_lst, col=[10, 11, 12])
+    # toner_4c_g = max_Cab_lab(lab_lst, col=[13, 14, 15])
+    # toner_4c_b = max_Cab_lab(lab_lst, col=[16, 17, 18])
+    injeck = max_Cab_lab(data_lst, col=[19, 20, 21])
 
-    ref_points = max_Cab_lab(lab_lst, col=[4, 5, 6])
-    toner_4c = max_Cab_lab(lab_lst, col=[7, 8, 9])
-    toner_4c_r = max_Cab_lab(lab_lst, col=[10, 11, 12])
-    toner_4c_g = max_Cab_lab(lab_lst, col=[13, 14, 15])
-    toner_4c_b = max_Cab_lab(lab_lst, col=[16, 17, 18])
-    injeck = max_Cab_lab(lab_lst, col=[19, 20, 21])
-
-    gamut = plot.Gamut()
-    # gamut.add_points(ref_points, color='k', label="Ref")
-    gamut.add_points(toner_4c, color='y', label="4C")
-    gamut.add_points(toner_4c_r, color='r', label="4C+R")
-    gamut.add_points(toner_4c_g, color='g', label="4C+G")
-    gamut.add_points(toner_4c_b, color='b', label="4C+B")
-    # gamut.add_points(injeck, color='m', label="Inkjet")
-    gamut.plot()
-
-
-def plot_polar(ipt_path):
-
-    def group_value(ipt_lst: list, value: str) -> list:
-        result = []
-        for i in ipt_lst:
-            if i[1] == value:
-                result.append(i)
-
-        return result
-
-    def group_by_key(ipt_lst: list, value: str) -> dict:
-        value_lst = group_value(ipt_lst, value)
-
-        result = {}
-        for v in value_lst:
-            result[v[0]] = []
-
-        for v in value_lst:
-            result[v[0]].append(v)
-
-        return result
-
-    with open(ipt_path, 'r') as csvfile:
-        reader = csv.reader(csvfile)
-        next(reader)
-        ipt_lst = [line for line in reader]
-
-    value_3 = group_by_key(ipt_lst, '3')
-
-    key = 'R'
-    x = np.array([float(x[1]) for x in value_3[key]])
-    y = np.array([float(x[2]) for x in value_3[key]])
-    x, y = np.meshgrid(x, y)
-
-    plt.plot(x, y, 'o')
+    gamut = plot.Gamut((7, 6))
+    gamut.add_points(ref_points, c='k', ln='-', m='o', lb="Ref")
+    gamut.add_points(toner_4c, c='y', ln='--', m='.', lb="4C")
+    # gamut.add_points(toner_4c_r, color='r', label="4C+R")
+    # gamut.add_points(toner_4c_g, color='g', label="4C+G")
+    # gamut.add_points(toner_4c_b, color='b', label="4C+B")
+    gamut.add_points(injeck, c='m', ln='--', m='.', lb="Inkjet")
+    fig = gamut.plot_gamut()
     plt.show()
 
-    # z = np.array([float(x[-1]) for x in value_3[key]])
-    #
-    # lv = np.linspace(min(z), max(z), 10)
-    #
-    # polar = plot.Polar()
-    # polar.add_points([x, y, z, lv])
-    # polar.plot()
 
+def plot_polar(ipt_path, split_num=11):
+    data_lst = data_processing.read_csv(ipt_path, 2)
 
+    value_col = 2  # 1 hue, 2 value, 3 chroma
+    grouped_data: dict = data_processing.group_by(data_lst, value_col)
 
+    # Fetch all De and find the min max value for the colorbar range
+    de_col = [7, 11]  # Toner_printer_4C, Inkjet_printer
+    z_all = []
 
+    for key, value in grouped_data.items():
+        if data_processing.is_nested(value) is True:
+            for sub_value in value:
+                z_all.extend(float(sub_value[i]) for i in de_col)
+        else:
+            z_all.extend([float(value[i]) for i in de_col])
 
+    z_min, z_max = min(z_all), max(z_all)
+    lv = np.linspace(z_min, z_max, split_num)
 
+    # Split the input data into two figures
+    for i, (key, data) in enumerate(grouped_data.items()):
+        x, y, z1, z2 = [], [], [], []  # a*, b*, de2000_1, de2000_2
 
+        for value in data:
+            x.append(float(value[5]))
+            y.append(float(value[6]))
+            z1.append(float(value[7]))
+            z2.append(float(value[11]))
 
+        contour = plot.Contour(1, 2, figsize=(13, 6), sharex=True, sharey=True)
+        contour.add_points(x, y, z1, lv, cmap='RdBu_r', title='Toner printer 4C')
+        contour.add_points(x, y, z2, lv, cmap='RdBu_r', title='Inkjet printer')
 
+        title = f"Value {i+1}"
+        fig = contour.plot_tricontourf(title, xlim=(-90, 90), ylim=(-80, 120))
+        # fig = contour.plot_tricontour(title, xlim=(-90, 90), ylim=(-80, 120))
+
+        save_path = Path('output') / f"Toner_4C_Inkjet_contour-Value_{i+1}.png"
+        plot.save_plt_figure(fig, save_path, dpi=1200)
 
 
 if __name__ == '__main__':
@@ -223,7 +193,7 @@ if __name__ == '__main__':
     #
     # plotMunsellScatter.plot_contour_chart(ref_path, com_path, save_path)
     p = r"C:\Users\cghsi\OneDrive\NTUST_CIT\Experiments\Munsell_Reproduction\Analysis\Summary_lab.csv"
-    # plot_gamut(p)
+    plot_gamut(p)
 
-    p1 = r"C:\Users\cghsi\OneDrive\NTUST_CIT\Experiments\Munsell_Reproduction\Analysis\4C_50_combine_delta_without.csv"
-    plot_polar(p1)
+    # p = r"C:\Users\cghsi\OneDrive\NTUST_CIT\Experiments\Munsell_Reproduction\Analysis\ref_com_de_only.csv"
+    # plot_polar(p)
