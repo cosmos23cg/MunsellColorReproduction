@@ -7,6 +7,10 @@ import numpy as np
 
 from lib import conversion
 
+
+# def
+
+
 class LoadFolder:
     """
     instance this class auto read and save file data as dictionary.
@@ -206,8 +210,3 @@ class Gamut:
             return True
         else:
             return False
-
-# TODO: Class PassRate
-
-def clip_rgb(rgb_array: np.ndarray) -> np.ndarray:
-    return np.clip(rgb_array, 0, 255)

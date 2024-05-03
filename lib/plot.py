@@ -1,8 +1,9 @@
-from pathlib import Path
+from lib import data_processing
 
 import numpy as np
 import matplotlib.pyplot as plt
 from lib.error import PlotFunctionError
+
 
 class Gamut:
     """
@@ -10,18 +11,48 @@ class Gamut:
     2. plot multiple gamut via args (finished)
     3. choose the diagram (CIE xy, CIE 1976Lab, CIE 1976Luv)
     """
-    def __init__(self, figsize):
-        self.fig, self.ax = plt.subplots(figsize=figsize)  # Create a figure and axis
+    def __init__(self, nrows, ncols, **kwarg):
+        self.fig, self.ax = plt.subplots(nrows, ncols, **kwarg)  # Create a figure and axis
         self.points = []
+        self.area = []
 
-    def axis_setting(self, xlim=(-130, 130), ylim=(-100, 130)):
+    def axis_setting(self, xlim=(-130, 130), ylim=(-100, 140)):
+        self.ax.set_aspect(aspect='equal', adjustable='box')
         self.ax.grid(which='both', alpha=0.2)
+
         self.ax.set_xlim(xlim[0], xlim[1])
         self.ax.set_ylim(ylim[0], ylim[1])
 
         self.ax.set_xlabel("a*")
         self.ax.set_ylabel("b*")
-        self.ax.legend(loc='lower left')
+
+        handles, labels = self.ax.get_legend_handles_labels()
+        new_labels = [f'{label:>7}:{area[1]:>8.2f}%' for label, area in zip(labels, self.area)]
+        self.ax.legend(handles, new_labels, loc='center left', bbox_to_anchor=(1, 0.5), title='Legend & area ratio\n')
+
+        self.fig.subplots_adjust(right=0.8)
+
+    def add_annotate(self, ant_cor, ant_lst):
+
+        for i in range(len(ant_lst)):
+            x = ant_cor[i][0]
+            y = ant_cor[i][1]
+            annotate = ant_lst[i][0]
+
+            if x > 0 and y > 0:
+                # Quadrant 1
+                xytext = (10, 3)
+            elif y > 0 > x:
+                # Quadrant 2
+                xytext = (-15, 3)
+            elif x < 0 and y < 0:
+                # Quadrant 3
+                xytext = (-13, -15)
+            else:
+                # Quadrant 4
+                xytext = (15, -15)
+
+            self.ax.annotate(f"{annotate}", (x, y), textcoords='offset points', xytext=xytext, ha='center')
 
     def add_points(self, points: list, c: str, ln: str, m: str, lb: str):
         """
@@ -40,9 +71,25 @@ class Gamut:
         """
         self.points.append((points, c, ln, m, lb))
 
-    def plot_gamut(self):
+    def gamut_area(self, *args: list):
+        areas = []
+        for arg in args:
+            crt_area = 0
+            for i in range(0, len(arg) - 1):
+                a = arg[i]
+                b = arg[i + 1]
+
+                area = data_processing.triangle_area(a, b, (0, 0))
+                crt_area += area
+
+            areas.append(crt_area)
+
+        self.area = data_processing.area_ratio(areas[0], areas)
+
+    def plot_gamut(self, make_circle=True):
         for points, color, line, marker, label in self.points:
-            x, y = zip(*points)
+            x = [x[0] for x in points]
+            y = [x[1] for x in points]
 
             self.ax.plot(x, y, color + line, label=label)  # line
             self.ax.plot(x, y, color + marker)  # marker
@@ -53,6 +100,7 @@ class Gamut:
 
 
 class Contour:
+    # TODO: add the area of the contour
     def __init__(self, nrows=1, ncols=1, **kwargs):
         self.fig, self.axs = plt.subplots(nrows, ncols, **kwargs)
         self.points = []
@@ -63,8 +111,18 @@ class Contour:
         # The z number show by legend
         self.fig.subplots_adjust(right=0.8)
 
-        artists, labels = cont.legend_elements(str_format='{:2.1f}'.format)
-        self.axs[1].legend(artists, labels, handleheight=2, framealpha=1, loc='center left', bbox_to_anchor=(1.1, 0.5))
+        artists, labels = cont.legend_elements(str_format='{:.0f}'.format)
+        artists = artists[::-1]
+        labels = labels[::-1]
+        labels = [x.replace('x = ', '') for x in labels]
+
+        self.axs[1].legend(artists,
+                           labels,
+                           handleheight=2,
+                           framealpha=1,
+                           loc='center left',
+                           bbox_to_anchor=(1.1, 0.5),
+                           title='dE2000\n')
 
         # show each z inline
         # for ax in self.axs:
@@ -75,18 +133,12 @@ class Contour:
             self.fig.subplots_adjust(right=0.8)
 
             cbar_ax = self.fig.add_axes([0.85, 0.11, 0.02, 0.78])  # setting color bar, (left, bottom, width, height)
-            self.cbar = self.fig.colorbar(cont, cax=cbar_ax, format='%.2f', ticks=lv)
+            self.cbar = self.fig.colorbar(cont, cax=cbar_ax, format='%.0f', ticks=lv)  # .0f: rounding
 
     def add_points(self, x, y, z, lv, cmap, title: str):
         self.points.append((x, y, z, lv, cmap, title))
 
     def axis_setting(self, cont, lv, plotm, **kwargs):
-        """
-        parameters
-        ----------
-        plotm:
-            plot method: 'unfilled', 'filled'
-        """
         # Common settings
         self.fig.text(0.5, 0.02, 'a*', ha='center', size=12)
         self.fig.text(0.07, 0.5, 'b*', va='center', size=12, rotation='vertical')
@@ -123,22 +175,83 @@ class Contour:
         return self.fig
 
     def plot_tricontourf(self, main_title, **kwargs):
-        """
-        Plot the contour fig
-
-        Parameters
-        ----------
-
-        """
         if len(self.points) <= 1:
             raise PlotFunctionError("self.points have two list more")
 
         for idx, (x, y, z, lv, cmap, title) in enumerate(self.points):
             cont = self.axs[idx].tricontourf(x, y, z, lv, cmap=cmap)
             self.axs[idx].set_title(title)
-            self.axis_setting(cont, lv, plotm='filled',**kwargs)
+            self.axis_setting(cont, lv, plotm='filled', **kwargs)
 
         self.fig.suptitle(main_title, y=0.961, ha='center', size=14, weight='bold')
+
+        return self.fig
+
+
+class Box:
+    def __init__(self, nrows, ncols, **kwarg):
+        self.fig, self.ax = plt.subplots(nrows, ncols, **kwarg)
+
+    def _box_setting(self, bplot, title):
+        # R, YR, Y, GY, G, BG, B, PB, P, RP
+        colors = ['red', 'red',
+                  'orangered', 'orangered',
+                  'yellow', 'yellow',
+                  'yellowgreen', 'yellowgreen',
+                  'green', 'green',
+                  'cyan', 'cyan',
+                  'blue', 'blue',
+                  'blueviolet', 'blueviolet',
+                  'purple', 'purple',
+                  'deeppink', 'deeppink'
+                  ]
+
+        gray_scale = ['black', 'black',
+                      'dimgray', 'dimgray',
+                      'gray', 'gray',
+                      'darkgray', 'darkgray',
+                      'silver', 'silver',
+                      'lightgray', 'lightgray',
+                      'gainsboro', 'gainsboro',
+                      'whitesmoke', 'whitesmoke',
+                      'white', 'white']
+
+        alpha = [1.0, 1.0,
+                 0.9, 0.9,
+                 0.8, 0.8,
+                 0.7, 0.7,
+                 0.6, 0.6,
+                 0.5, 0.5,
+                 0.4, 0.4,
+                 0.3, 0.3,
+                 0.2, 0.2,
+                 0.1, 0.1]
+
+        match title:
+            case 'hue':
+                for patch, color in zip(bplot['boxes'], colors):
+                    patch.set_facecolor(color)
+
+            case 'value':
+                for patch, scale in zip(bplot['boxes'], gray_scale):
+                    patch.set_facecolor(scale)
+
+            case 'chroma':
+                for patch, alpha in zip(bplot['boxes'], alpha):
+                    patch.set_alpha(alpha)
+
+    def _axes_setting(self, xlabel, ylabel):
+        self.ax.grid(alpha=0.3)
+        self.ax.set_xlabel(xlabel)
+        self.ax.set_ylabel(ylabel)
+
+    def plot_box_whisker(self, data, labels, title, write_name):
+        bplot = self.ax.boxplot(data, patch_artist=True)
+        self.ax.set_xticks(range(1, len(labels) + 1))  # 設置刻度位置
+        self.ax.set_xticklabels(labels)  # 設置標籤
+        self.ax.set_title(title)
+        self._box_setting(bplot, write_name)
+        self._axes_setting(xlabel=write_name, ylabel='dE2000')
 
         return self.fig
 

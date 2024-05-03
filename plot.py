@@ -91,49 +91,52 @@ class PlotMunsellScatter:
 
 
 def plot_gamut(input_path):
-    def max_Cab(lab_lst: list, col: list) -> dict:
-        # TODO: pre slice the list range
-        lab_dict: dict = data_processing.group_by(lab_lst, group_key=1)
+    def max_Cab(data_lst: list, col):
+        grouped_data: dict = data_processing.group_by(data_lst, group_key=1)  # 1 is hue in Excel file
 
-        max_dict = {}
-        for k in lab_dict.keys():
-            for i in range(len(lab_dict[k])):
-                cab = math.sqrt(float(lab_dict[k][i][-2]) ** 2 + float(lab_dict[k][i][-1]) ** 2)
-                lab_dict[k][i].append(cab)
+        result_lst = []
+        for key, value in grouped_data.items():
+            for i in range(len(value)):
+                # slice the list
+                value[i] = [value[i][j] for j in [0, 1, 2, 3, col[0], col[1]]]
 
-            max_value = max(lab_dict[k], key=lambda x: x[-1])
-            max_dict[k] = max_value
+                # calculate the Cab then append in lst
+                cab = data_processing.cie_1976_cab(value[i][-2], value[i][-1])
+                grouped_data[key][i].append(cab)
 
-        return max_dict
+            max_lst = max(grouped_data[key], key=lambda x: x[-1])
+            max_lst = data_processing.check_float(max_lst)
+            result_lst.append(max_lst)
 
-    def max_Cab_lab(lab_lst: list, col: list) -> list:
-        Cab_dict = max_Cab(lab_lst, col)
-        opt_lst = [(float(value[1]), float(value[2])) for value in Cab_dict.values()]
-        opt_lst.append(opt_lst[0])  # add the first element let the gamut be lined
+        hvc = [x[1:4] for x in result_lst]
+        points = [x[4:6] for x in result_lst]
 
-        return opt_lst
+        return hvc, points
 
-    data_lst = data_processing.read_csv(input_path, 2)
+    data_lst = data_processing.read_csv(input_path, skip_lines=2)
 
-    ref_points = max_Cab_lab(data_lst, col=[4, 5, 6])
-    toner_4c = max_Cab_lab(data_lst, col=[7, 8, 9])
-    # toner_4c_r = max_Cab_lab(lab_lst, col=[10, 11, 12])
-    # toner_4c_g = max_Cab_lab(lab_lst, col=[13, 14, 15])
-    # toner_4c_b = max_Cab_lab(lab_lst, col=[16, 17, 18])
-    injeck = max_Cab_lab(data_lst, col=[19, 20, 21])
+    ref_hue, ref_points = max_Cab(data_lst, (5, 6))
+    _, toner_4c_points = max_Cab(data_lst, (8, 9))
+    _, injeck_points = max_Cab(data_lst, (20, 21))
 
-    gamut = plot.Gamut((7, 6))
+    # Make the data can plot a circle
+    ref_points.append(ref_points[0])
+    toner_4c_points.append(toner_4c_points[0])
+    injeck_points.append(injeck_points[0])
+
+    gamut = plot.Gamut(1, 1, figsize=(8, 6))
     gamut.add_points(ref_points, c='k', ln='-', m='o', lb="Ref")
-    gamut.add_points(toner_4c, c='y', ln='--', m='.', lb="4C")
-    # gamut.add_points(toner_4c_r, color='r', label="4C+R")
-    # gamut.add_points(toner_4c_g, color='g', label="4C+G")
-    # gamut.add_points(toner_4c_b, color='b', label="4C+B")
-    gamut.add_points(injeck, c='m', ln='--', m='.', lb="Inkjet")
+    gamut.add_points(toner_4c_points, c='y', ln='--', m='^', lb="4C")
+    gamut.add_points(injeck_points, c='m', ln='--', m='^', lb="Inkjet")
+
+    gamut.gamut_area(ref_points, toner_4c_points, injeck_points)
+    gamut.add_annotate(ref_points, ref_hue)
     fig = gamut.plot_gamut()
-    plt.show()
+    write_path = Path('output') / 'gamut and ratio.png'
+    plot.save_plt_figure(fig, write_path, dpi=1200)
 
 
-def plot_polar(ipt_path, split_num=11):
+def plot_contour(ipt_path, contour_type, split_num=11):
     data_lst = data_processing.read_csv(ipt_path, 2)
 
     value_col = 2  # 1 hue, 2 value, 3 chroma
@@ -164,15 +167,48 @@ def plot_polar(ipt_path, split_num=11):
             z2.append(float(value[11]))
 
         contour = plot.Contour(1, 2, figsize=(13, 6), sharex=True, sharey=True)
-        contour.add_points(x, y, z1, lv, cmap='RdBu_r', title='Toner printer 4C')
-        contour.add_points(x, y, z2, lv, cmap='RdBu_r', title='Inkjet printer')
+        contour.add_points(x, y, z1, lv, cmap='coolwarm', title='Toner')
+        contour.add_points(x, y, z2, lv, cmap='coolwarm', title='Inkjet')
 
         title = f"Value {i+1}"
-        fig = contour.plot_tricontourf(title, xlim=(-90, 90), ylim=(-80, 120))
-        # fig = contour.plot_tricontour(title, xlim=(-90, 90), ylim=(-80, 120))
 
-        save_path = Path('output') / f"Toner_4C_Inkjet_contour-Value_{i+1}.png"
-        plot.save_plt_figure(fig, save_path, dpi=1200)
+        match contour_type:
+            case "tricontourf":
+                fig = contour.plot_tricontourf(title, xlim=(-90, 90), ylim=(-80, 120))
+                save_path = Path('output') / f"Toner_4C_Inkjet_contourf-Value_{i + 1}.png"
+                # plot.save_plt_figure(fig, save_path, dpi=1200)
+
+            case "tricontour":
+                fig = contour.plot_tricontour(title, xlim=(-90, 90), ylim=(-80, 120))
+                save_path = Path('output') / f"Toner_4C_Inkjet_contour-Value_{i + 1}.png"
+                # plot.save_plt_figure(fig, save_path, dpi=1200)
+
+            # case "contour":
+            #     fig = contour.plot_contour(title, xlim=(-90, 90), ylim=(-80, 120))
+
+        plt.show()
+        break
+
+
+def plot_box_whisker(data_path, group_key, write_name):
+    data_lst = data_processing.read_csv(data_path, skip_lines=2)
+    grouped_data: dict = data_processing.group_by(data_lst, group_key)  # 1 hue, 2 value, 3 chroma
+
+    all_data = []
+    all_labels = []
+
+    for key, values in grouped_data.items():
+        printer_0 = [float(value[7]) for value in values]
+        printer_1 = [float(value[11]) for value in values]
+
+        all_data.extend([printer_0, printer_1])
+        all_labels.extend([f'{key}\nToner\n4C', f'{key}\nInkjet'])
+
+    box = plot.Box(1, 1, figsize=(16, 9))
+    fig = box.plot_box_whisker(all_data, all_labels, 'Box and whisker', write_name)
+
+    write_path = Path('output') / f'box_whisker-{write_name}.png'
+    plot.save_plt_figure(fig, write_path, dpi=1200)
 
 
 if __name__ == '__main__':
@@ -192,8 +228,9 @@ if __name__ == '__main__':
     # plotMunsellScatter.plot_munsell_scatter_de(ref_path, com_path, save_path)
     #
     # plotMunsellScatter.plot_contour_chart(ref_path, com_path, save_path)
-    p = r"C:\Users\cghsi\OneDrive\NTUST_CIT\Experiments\Munsell_Reproduction\Analysis\Summary_lab.csv"
-    plot_gamut(p)
+    # p = r"C:\Users\cghsi\OneDrive\NTUST_CIT\Experiments\Munsell_Reproduction\Analysis\Summary_lab.csv"
+    # plot_gamut(p)
 
-    # p = r"C:\Users\cghsi\OneDrive\NTUST_CIT\Experiments\Munsell_Reproduction\Analysis\ref_com_de_only.csv"
-    # plot_polar(p)
+    p = r"C:\Users\cghsi\OneDrive\NTUST_CIT\Experiments\Munsell_Reproduction\Analysis\ref_com_de_only.csv"
+    plot_contour(p, "contour")
+    # plot_box_whisker(p, 3, 'chroma')
