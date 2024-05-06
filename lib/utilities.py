@@ -1,61 +1,11 @@
-from pathlib import Path
-from typing import Optional
-
 import colour
-import csv
 import numpy as np
 
-from lib import conversion
+import math
+import csv
 
+from lib import conversion, error
 
-# def
-
-
-class LoadFolder:
-    """
-    instance this class auto read and save file data as dictionary.
-    Load folder and read the sub file as dictionary. The key is the file name and values is the file contents.
-    """
-    def __init__(self, file_path, file_format):
-        self.p = Path(file_path)
-        self.fmt = file_format
-        self.color_dict = {}
-        self._read_file()
-
-    def _sub_files(self):
-        """
-        Fetch the file path with the specific data format
-        """
-        if not self.p.exists():
-            raise FileNotFoundError(f'Folder {self.p} not found.')
-
-        if self.p.is_dir():
-            return list(self.p.glob("**/*" + self.fmt))
-        elif self.p.is_file():
-            return [self.p]
-        else:
-            raise FileExistsError(f"Foldr {self.p} not found.")
-
-    def _read_file(self):
-        """
-        Read the file path and save as dictionary.
-        """
-        error_file = []
-        for file in self._sub_files():
-            if file.is_file():
-                try:
-                    with open(file, "r") as csvfile:
-                        if self.fmt == '.csv':
-                            reader = csv.reader(csvfile)
-                            self.color_dict["header"] = next(reader)  # obtained the first row from csv
-                            # TODO: this will exclude the N.csv
-                            if len(file.stem) > 2:  # if the file name character more than 2
-                                separator = '_' if '_' in file.stem else "-"
-                                hue_title = file.stem.split(separator)[0]
-                                self.color_dict[hue_title] = list(reader)
-                except csv.Error as e:
-                    error_file.append(file)
-                    print(f"Error reading CSV file {file}: {e}")  # Handle csv error
 
 class MunsellColor:
     """
@@ -63,111 +13,156 @@ class MunsellColor:
 
     Attribute: COLORDICT, HVC, Lab
     """
+    def __init__(self, data: list):
+        # self.rgb_header = ['h', 'v', 'c', 'r', 'g', 'b', 'l*', 'a*', 'b*']
+        # self.cmyk_header = ['h', 'v', 'c', 'c', 'm', 'y', 'k', 'l*', 'a*', 'b*']
+        self.grouped_data = self._group_hue(data)
 
-    def __init__(self, file_path, file_format):
-        self.p = Path(file_path)
-        self.fmt = file_format
-        self.munsell_dict: Optional[dict] = LoadFolder(self.p, self.fmt).color_dict
-        self.statement = self._get_statement()
+    @staticmethod
+    def _group_hue(input_list):
+        # lw = [x.lower() for x in input_list[0]]
 
-    def _check_condition(self, conditions):
-        """
-        Find out the index that the *args appears in list.
-        """
-        result = ""
-        for idx, value in enumerate(self.munsell_dict['header']):
-            for condition in conditions:
-                if condition in value:
-                    result += condition
-        return result if len(result) > 0 else None
+        grouped = {'header': input_list[0]}
+        group_temp = group_by(input_list[1:], 0)
+        grouped.update(group_temp)
 
-    def _get_statement(self):
-        """
-        Required the list if the csv header has matched the 'L*a*b*', 'xyY', or 'RGB'.
-        """
-        result_ls = []
-        conditions = [
-            ('L*', 'a*', 'b*'),
-            ('x', 'y', 'Y'),
-            ('R', 'G', 'B')
-        ]
+        return grouped
 
-        for condition in conditions:
-            result = self._check_condition(condition)
-            if result is not None:
-                result_ls.append(result)
+    def _require_index(self, value):
+        lw = [x.lower() for x in self.grouped_data['header']]
+        idxs = [lw.index(x) for x in value]
 
-        return result_ls
+        return idxs
 
-    def _check_idx(self, *args):
-        idx_ls = []
-        for idx, value in enumerate(self.munsell_dict['header']):
-            if any(arg in value for arg in args):
-                idx_ls.append(idx)
-        return idx_ls
+    def _extract_value(self, idxs):
+        output = {key: [] for key in self.grouped_data.keys() if key != 'header'}
 
-    def _extract_val_by_idx(self, index_list: list, np_dtype, clear_dict=None) -> dict | None:
-        """
-        Parameters: DICT is the return dictionary from whose function.
-        index_list is the required index.
-        Returns: required Dictionary
-        """
-        output_dict = {}
-        munsell_data_clone = self.munsell_dict.copy()
-        min_idx, max_idx = min(index_list), max(index_list)
-        for key in munsell_data_clone.keys():
-            if key != 'header':
-                extract_value = [x[min_idx:max_idx + 1] for x in munsell_data_clone[key]]
-                if any(value == "" for value in extract_value[0]):
+        for idx, (key, values) in enumerate(self.grouped_data.items()):
+            # skip header
+            if key == 'header':
+                continue
+
+            for value in values:
+                value = [value[x] for x in idxs]
+
+                if any(len(x) == 0 for x in value):
                     return None
-                else:
-                    output_dict[key] = np.array(extract_value).astype(np_dtype)
-        return output_dict
 
-    def VC(self, clear_dict=None) -> dict:
-        """
-        find the hVC index, then print the HVC value in dictionary by indexing.
-        Returns: HVC value dictionary
-        """
-        extract_VC_DICT = self._extract_val_by_idx(self._check_idx('V', "C"), np.uint8)
-        if extract_VC_DICT is not None:
-            print(f"** VC required from file. \n {extract_VC_DICT.keys()}")
-            return extract_VC_DICT
+                value = [float(x) for x in value]
+                output[key].append(value)
 
-    def Lab(self, clear_dict=None) -> dict:
-        # TODO: Converted Lab from xyY, XYZ, RGB
-        """
-        If Lab index is empty. then find header list if there are xy, xyY, XYZ, RGB
-        Returns: Lab value dictionary
-        """
-        extract_Lab_dict = self._extract_val_by_idx(self._check_idx('L*', 'a*', 'b*'), np.float32)
-        if extract_Lab_dict is not None:
-            print(f"** Lab required from file. \n {extract_Lab_dict.keys()}")
-            return extract_Lab_dict
+        return output
 
-    def RGB(self, clear_dict=None):
-        # TODO: used XYZ convert to RGB
-        """
-        Read from CSV
-        Return: RGB in normalization [0, 1]
-        """
-        rgb_dict = {} if clear_dict is None else clear_dict
+    def vc(self):
+        idxs = self._require_index(['v', 'c'])
+        vc_dict = self._extract_value(idxs)
 
-        extract_rgb_dict = self._extract_val_by_idx(self._check_idx('R', 'G', 'B'), np.uint8)
-        if extract_rgb_dict is not None:
-            for key, value in extract_rgb_dict.items():
-                value = value / 255.0  # normalization
-                extract_rgb_dict[key] = value
-            print(f"** RGB required from file. \n {extract_rgb_dict.keys()}")
-            return extract_rgb_dict
+        return vc_dict
 
-        elif 'L*a*b*' in self.statement:
-            extract_Lab_dict = self._extract_val_by_idx(self._check_idx('L*', 'a*', 'b*'), np.float32)
-            for key, value in extract_Lab_dict.items():
-                rgb = conversion.Lab_to_RGB(value, "D50", "D50", "sRGB")
-                rgb_dict[key] = rgb
-            print(f"** RGB convert from L*a*b* \n {rgb_dict.keys()}")
+    def lab(self):
+        idxs = self._require_index(['l*', 'a*', 'b*'])
+        lab_dict = self._extract_value(idxs)
+
+        if lab_dict is None:
+            raise error.InputDataEmptyError
+
+        return lab_dict
+
+    def rgb(self):
+        idxs = self._require_index(['r', 'g', 'b'])
+        rgb_dict = self._extract_value(idxs)
+
+        if rgb_dict is not None:
             return rgb_dict
+
+    # def _check_condition(self, conditions):
+    #     """
+    #     Find out the index that the *args appears in list.
+    #     """
+    #     result = ""
+    #     for idx, value in enumerate(self.grouped_data['header']):
+    #         for condition in conditions:
+    #             if condition in value:
+    #                 result += condition
+    #     return result if len(result) > 0 else None
+
+    # def _get_statement(self):
+    #     """
+    #     Required the list if the csv header has matched the 'L*a*b*', 'xyY', or 'RGB'.
+    #     """
+    #     result_ls = []
+    #     conditions = [
+    #         ('L*', 'a*', 'b*'),
+    #         ('x', 'y', 'Y'),
+    #         ('R', 'G', 'B')
+    #     ]
+    #
+    #     for condition in conditions:
+    #         result = self._check_condition(condition)
+    #         if result is not None:
+    #             result_ls.append(result)
+    #
+    #     return result_ls
+
+    # def _check_idx(self, *args):
+    #     idx_ls = []
+    #     for idx, value in enumerate(self.grouped_data['header']):
+    #         if any(arg in value for arg in args):
+    #             idx_ls.append(idx)
+    #     return idx_ls
+
+    # def _extract_val_by_idx(self, index_list: list, np_dtype, clear_dict=None) -> dict | None:
+    #     """
+    #     Parameters: DICT is the return dictionary from whose function.
+    #     index_list is the required index.
+    #     Returns: required Dictionary
+    #     """
+    #     output_dict = {}
+    #     munsell_data_clone = self.grouped_data.copy()
+    #     min_idx, max_idx = min(index_list), max(index_list)
+    #     for key in munsell_data_clone.keys():
+    #         if key != 'header':
+    #             extract_value = [x[min_idx:max_idx + 1] for x in munsell_data_clone[key]]
+    #             if any(value == "" for value in extract_value[0]):
+    #                 return None
+    #             else:
+    #                 output_dict[key] = np.array(extract_value).astype(np_dtype)
+    #     return output_dict
+
+    # def Lab(self, clear_dict=None) -> dict:
+    #     # TODO: Converted Lab from xyY, XYZ, RGB
+    #     """
+    #     If Lab index is empty. then find header list if there are xy, xyY, XYZ, RGB
+    #     Returns: Lab value dictionary
+    #     """
+    #     extract_Lab_dict = self._extract_val_by_idx(self._check_idx('L*', 'a*', 'b*'), np.float32)
+    #     if extract_Lab_dict is not None:
+    #         print(f"** Lab required from file. \n {extract_Lab_dict.keys()}")
+    #         return extract_Lab_dict
+
+    # def RGB(self, clear_dict=None):
+    #     # TODO: used XYZ convert to RGB
+    #     """
+    #     Read from CSV
+    #     Return: RGB in normalization [0, 1]
+    #     """
+    #     rgb_dict = {} if clear_dict is None else clear_dict
+    #
+    #     extract_rgb_dict = self._extract_val_by_idx(self._check_idx('R', 'G', 'B'), np.uint8)
+    #     if extract_rgb_dict is not None:
+    #         for key, value in extract_rgb_dict.items():
+    #             value = value / 255.0  # normalization
+    #             extract_rgb_dict[key] = value
+    #         print(f"** RGB required from file. \n {extract_rgb_dict.keys()}")
+    #         return extract_rgb_dict
+    #
+    #     elif 'L*a*b*' in self.statement:
+    #         extract_Lab_dict = self._extract_val_by_idx(self._check_idx('L*', 'a*', 'b*'), np.float32)
+    #         for key, value in extract_Lab_dict.items():
+    #             rgb = conversion.Lab_to_RGB(value, "D50", "D50", "sRGB")
+    #             rgb_dict[key] = rgb
+    #         print(f"** RGB convert from L*a*b* \n {rgb_dict.keys()}")
+    #         return rgb_dict
 
 
 class Gamut:
@@ -210,3 +205,75 @@ class Gamut:
             return True
         else:
             return False
+
+
+def read_csv(input_path, skip_lines=None):
+    with open(input_path, 'r') as csvfile:
+        reader = csv.reader(csvfile)
+
+        if skip_lines is None:
+            return [line for line in reader]
+
+        for _ in range(skip_lines):
+            next(reader)
+
+        return [line for line in reader]
+
+
+def group_by(ipt_lst: list, group_key: int) -> dict:
+    """
+    ipt_lst:
+        input_list
+    group_key:
+
+    """
+    result = {}
+
+    for sub_lst in ipt_lst:
+        if sub_lst[group_key] not in result:
+            result[sub_lst[group_key]] = []
+
+        result[sub_lst[group_key]].append(sub_lst)
+
+    return result
+
+
+def check_float(lst: list):
+    for i in range(-3, 0, 1):
+        lst[i] = float(lst[i])
+    return lst
+
+
+def is_nested(lst: list):
+    for item in lst:
+        if isinstance(item, list):
+            return True
+    return False
+
+
+def cie_1976_cab(a, b):
+    """
+    Calculate Cab value from a and b values.
+
+    Parameters:
+        a (float): a value.
+        b (float): b value.
+
+    Returns:
+        float: Cab value.
+    """
+    return math.sqrt(float(a) ** 2 + float(b) ** 2)
+
+
+def triangle_area(p1, p2, p3):
+    return abs((p1[0] * (p2[1] - p3[1]) + p2[0] * (p3[1] - p1[1]) + p3[0] * (p1[1] - p3[1])) / 2.0)
+
+
+def area_ratio(ref, points: list):
+    result_lst = []
+    for i in range(len(points)):
+        ratio = (points[i] / ref) * 100
+        result_lst.append([points[i], ratio])
+
+    return result_lst
+

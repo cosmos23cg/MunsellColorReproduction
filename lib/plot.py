@@ -1,4 +1,4 @@
-from lib import data_processing
+from lib import utilities
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -79,14 +79,14 @@ class Gamut:
                 a = arg[i]
                 b = arg[i + 1]
 
-                area = data_processing.triangle_area(a, b, (0, 0))
+                area = utilities.triangle_area(a, b, (0, 0))
                 crt_area += area
 
             areas.append(crt_area)
 
-        self.area = data_processing.area_ratio(areas[0], areas)
+        self.area = utilities.area_ratio(areas[0], areas)
 
-    def plot_gamut(self, make_circle=True):
+    def plot_gamut(self):
         for points, color, line, marker, label in self.points:
             x = [x[0] for x in points]
             y = [x[1] for x in points]
@@ -192,7 +192,8 @@ class Box:
     def __init__(self, nrows, ncols, **kwarg):
         self.fig, self.ax = plt.subplots(nrows, ncols, **kwarg)
 
-    def _box_setting(self, bplot, title):
+    @staticmethod
+    def _box_setting(bplot, title):
         # R, YR, Y, GY, G, BG, B, PB, P, RP
         colors = ['red', 'red',
                   'orangered', 'orangered',
@@ -256,99 +257,50 @@ class Box:
         return self.fig
 
 
-class MunsellScatter:
-    def __init__(self):
-        self.fig, self.ax = plt.subplots(figsize=(10, 9))
-        self.marker_type = 's'
+class MunsellHuePage:
+    def __init__(self, nrows, ncols, **kwarg):
+        self.fig, self.ax = plt.subplots(nrows, ncols, **kwarg)
+        self.de_threshold = 2.0
 
-    def _basic_scatter(self, x, y, color):
-        self.ax.scatter(x, y, s=1500, c=color, marker=self.marker_type)
+    def _axis_setting(self, title):
 
-    def _scatter_axis(self, title):
-        self.ax.set_xlim(0, 21)
-        self.ax.set_ylim(0, 10)
-        # ticks
-        x_ticks = list(range(2, 21, 2))
-        y_ticks = list(range(1, 10, 1))
-        self.ax.set_xticks(x_ticks)
-        self.ax.set_yticks(y_ticks)
-        self.ax.tick_params(axis='both', pad=-18, labelsize=14, color="None")
-        # label
-        x_labels = [f'/{x}' for x in x_ticks]
-        y_labels = [f'{y}/' for y in y_ticks]
-        self.ax.set_xticklabels(x_labels)
-        self.ax.set_yticklabels(y_labels)
-        # title
-        self.ax.set_title(title, fontsize=20)
-        # spines
+        self.ax.set_xlim(0.5, 10.5)
+        self.ax.set_xticks(list(range(1, 11, 1)))
+        self.ax.set_xticklabels([f'/{x}' for x in range(2, 21, 2)])
+        self.ax.set_xlabel('Chroma', labelpad=15)
+
+        self.ax.set_ylim(0.5, 9.5)
+        self.ax.set_yticks(list(range(1, 10, 1)))
+        self.ax.set_yticklabels([f'{x}/' for x in range(1, 10, 1)])
+        self.ax.set_ylabel('Value', labelpad=15)
+
+        self.ax.tick_params(axis='both', labelsize=12, color="None")
         self.ax.spines.bottom.set_visible(False)
         self.ax.spines.left.set_visible(False)
         self.ax.spines.right.set_visible(False)
-        plt.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.1)
+        self.ax.spines.top.set_visible(False)
 
-    def scatter(self, val_chroma: list, rgb: list, title: str):
-        """
-        Plot the scatter, x-axis: chroma, y-axis: value
+        self.ax.set_title(title, loc='right', fontsize=28, fontweight='roman')
+        self.ax.set_aspect(aspect='equal', adjustable='box')
+        self.fig.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.1)
 
-        Parameters
-        ----------
-        val_chroma:
-            value and chroma list or array by each hue
-        rgb:
-            rgb list by each hue
-        title:
-            hue name
-        """
-        val_arr = np.array(val_chroma[:, 0])
-        chroma_arr = np.array(val_chroma[:, 1])
-        rgb_arr = np.array(rgb)
+    def _text_de(self, x, y, de):
+        for i in range(len(de)):
+            ctext = 'r' if de[i] > self.de_threshold else 'w'
+            self.ax.text(x[i], y[i], round(de[i], 1), c=ctext, ha='center', va='center_baseline', fontsize=11)
 
-        self._basic_scatter(chroma_arr, val_arr, rgb_arr)
-        self._scatter_axis(title)
-        return self.fig
+    def _warn_circle_hint(self, x, y, de):
+        face_color = np.where(de > self.de_threshold, '#C5C5C5', '#696969')
+        self.ax.scatter(x, y, s=800, facecolors=face_color, edgecolor='w')
 
-    def scatter_de(self, val_chroma: list, rgb: list, de, title):
-        """
-        Plot the scatter, x-axis: chroma, y-axis: value
+    def plot_munsell_hue_page(self, x, y, color, title, de=None):
+        self.ax.scatter(x, y, c=color, marker='s', s=1700)
+        self._axis_setting(title)
 
-        Parameters
-        ----------
-        val_chroma:
-            value and chroma list or array by each hue
-        rgb:
-            rgb list by each hue
-        de:
-            color differance by each hue
-        title:
-            hue name
-        """
-        val_arr = np.array(val_chroma[:, 0])
-        chroma_arr = np.array(val_chroma[:, 1])
-        de_arr = np.array(de)
-        face_color = np.where(de_arr > 0, '#C5C5C5', '#696969')
+        if de is not None:
+            self._text_de(x, y, de)
+            self._warn_circle_hint(x, y, de)
 
-        self._basic_scatter(chroma_arr, val_arr, rgb)
-        self.ax.scatter(
-            chroma_arr,
-            val_arr,
-            s=900,
-            facecolors=face_color,
-            edgecolor='w'
-        )
-
-        for i in range(len(de_arr)):
-            text_color = 'w'
-            text_color = 'r' if de_arr[i] > 2.0 else text_color
-            self.ax.text(
-                chroma_arr[i],
-                val_arr[i],
-                round(de_arr[i], 1),
-                c=text_color,
-                ha='center',
-                va='center_baseline',
-                fontsize=13
-            )
-            self._scatter_axis(title)
         return self.fig
 
 
