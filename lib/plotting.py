@@ -2,7 +2,6 @@ from lib import utilities
 
 import numpy as np
 import matplotlib.pyplot as plt
-from lib.error import PlotFunctionError
 
 
 class Gamut:
@@ -11,48 +10,43 @@ class Gamut:
     2. plot multiple gamut via args (finished)
     3. choose the diagram (CIE xy, CIE 1976Lab, CIE 1976Luv)
     """
-    def __init__(self, nrows, ncols, **kwarg):
-        self.fig, self.ax = plt.subplots(nrows, ncols, **kwarg)  # Create a figure and axis
+    def __init__(self, nrows=1, ncols=1, **kwarg):
+        self.fig, self.axs = plt.subplots(nrows, ncols, **kwarg)  # Create a figure and axis
         self.points = []
         self.area = []
+        self._basic_axis_setting()
 
-    def axis_setting(self, xlim=(-130, 130), ylim=(-100, 140)):
-        self.ax.set_aspect(aspect='equal', adjustable='box')
-        self.ax.grid(which='both', alpha=0.2)
+    def _basic_axis_setting(self):
+        self.axs.set_aspect(aspect='equal', adjustable='box')
+        self.axs.grid(which='both', alpha=0.2)
 
-        self.ax.set_xlim(xlim[0], xlim[1])
-        self.ax.set_ylim(ylim[0], ylim[1])
+        self.axs.set_xlabel("a*", labelpad=10)
+        self.axs.set_ylabel("b*", labelpad=10)
 
-        self.ax.set_xlabel("a*")
-        self.ax.set_ylabel("b*")
+    def axis_setting(self, xlim=(-110, 110), ylim=(-90, 130)):
+        self.axs.set_xlim(xlim[0], xlim[1])
+        self.axs.set_ylim(ylim[0], ylim[1])
 
-        handles, labels = self.ax.get_legend_handles_labels()
-        new_labels = [f'{label:>7}:{area[1]:>8.2f}%' for label, area in zip(labels, self.area)]
-        self.ax.legend(handles, new_labels, loc='center left', bbox_to_anchor=(1, 0.5), title='Legend & area ratio\n')
+        handles, labels = self.axs.get_legend_handles_labels()
+        new_labels = [f'{label}\u2003: {area[1]:>.1f}%' for label, area in zip(labels, self.area)]
+        self.axs.legend(handles, new_labels, ncols=2, loc='upper center', bbox_to_anchor=(0.5, 1.1), title='Legend & Area ratio')
 
-        self.fig.subplots_adjust(right=0.8)
-
-    def add_annotate(self, ant_cor, ant_lst):
-
+    def add_hue_annotate(self, ant_cor, ant_lst):
         for i in range(len(ant_lst)):
             x = ant_cor[i][0]
             y = ant_cor[i][1]
-            annotate = ant_lst[i][0]
+            annotate = ant_lst[i]
 
             if x > 0 and y > 0:
-                # Quadrant 1
-                xytext = (10, 3)
+                xytext = (16, 3)  # Quadrant 1
             elif y > 0 > x:
-                # Quadrant 2
-                xytext = (-15, 3)
+                xytext = (-15, 3)  # Quadrant 2
             elif x < 0 and y < 0:
-                # Quadrant 3
-                xytext = (-13, -15)
+                xytext = (-13, -16)  # Quadrant 3
             else:
-                # Quadrant 4
-                xytext = (15, -15)
+                xytext = (15, -15)  # Quadrant 4
 
-            self.ax.annotate(f"{annotate}", (x, y), textcoords='offset points', xytext=xytext, ha='center')
+            self.axs.annotate(f"{annotate}", (x, y), textcoords='offset points', xytext=xytext, ha='center')
 
     def add_points(self, points: list, c: str, ln: str, m: str, lb: str):
         """
@@ -91,23 +85,24 @@ class Gamut:
             x = [x[0] for x in points]
             y = [x[1] for x in points]
 
-            self.ax.plot(x, y, color + line, label=label)  # line
-            self.ax.plot(x, y, color + marker)  # marker
+            self.axs.plot(x, y, c=color, linestyle=line, label=label, marker=marker)
 
         self.axis_setting()
 
         return self.fig
 
+    def plot_scatter(self, x, y, marker, c, edge_c):
+        self.axs.scatter(x, y, s=18, marker=marker, c=c, edgecolor=edge_c, linewidths=1.0)
+
 
 class Contour:
-    # TODO: add the area of the contour
     def __init__(self, nrows=1, ncols=1, **kwargs):
         self.fig, self.axs = plt.subplots(nrows, ncols, **kwargs)
         self.points = []
         self.cont = None
         self.cbar = None
 
-    def _contour_axis_setting(self, cont):
+    def _axis_setting_contour(self, cont):
         # The z number show by legend
         self.fig.subplots_adjust(right=0.8)
 
@@ -124,29 +119,20 @@ class Contour:
                            bbox_to_anchor=(1.1, 0.5),
                            title='dE2000\n')
 
-        # show each z inline
-        # for ax in self.axs:
-        #     ax.clabel(cont, fmt="%2.1f", use_clabeltext=True)
-
-    def _contourf_axis_setting(self, cont, lv):
+    def _axis_setting_contourf(self, cont, lv):
         if self.cbar is None:
             self.fig.subplots_adjust(right=0.8)
 
             cbar_ax = self.fig.add_axes([0.85, 0.11, 0.02, 0.78])  # setting color bar, (left, bottom, width, height)
             self.cbar = self.fig.colorbar(cont, cax=cbar_ax, format='%.0f', ticks=lv)  # .0f: rounding
 
-    def add_points(self, x, y, z, lv, cmap, title: str):
-        self.points.append((x, y, z, lv, cmap, title))
-
-    def axis_setting(self, cont, lv, plotm, **kwargs):
+    def _axis_setting(self, cont, lv, plotm, **kwargs):
         # Common settings
-        self.fig.text(0.5, 0.02, 'a*', ha='center', size=12)
-        self.fig.text(0.07, 0.5, 'b*', va='center', size=12, rotation='vertical')
 
         # sub_figure settings
-        for ax in self.axs:
+        for ax in self.axs.ravel():
             ax.set_aspect(aspect='equal', adjustable='box')
-            ax.grid(True, alpha=0.2)
+            ax.grid(True, alpha=0.1)
 
         # set x, y limit
         if 'xlim' in kwargs and 'ylim' in kwargs:
@@ -156,40 +142,197 @@ class Contour:
 
         # Custom settings
         if plotm == 'unfilled':
-            self._contour_axis_setting(cont)
+            self._axis_setting_contour(cont)
 
         if plotm == 'filled':
-            self._contourf_axis_setting(cont, lv)
+            self._axis_setting_contourf(cont, lv)
 
-    def plot_tricontour(self, main_title, **kwargs):
-        if len(self.points) <= 1:
-            raise PlotFunctionError("self.points have two list more")
+        # Set common x, y label
+        self.fig.supxlabel("a*")
+        self.fig.supylabel("b*")
 
+        self.fig.supxlabel("a*", y=0.04)
+        self.fig.supylabel("b*", x=0.04)
+
+    def add_points(self, x, y, z, lv, cmap, title: str, ax_pos):
+        self.points.append((x, y, z, lv, cmap, title, ax_pos))
+
+    def plot_tricontour(self, addition_lv, **kwargs):
         for idx, (x, y, z, lv, cmap, title) in enumerate(self.points):
+            # Plot the contour line
             cont = self.axs[idx].tricontour(x, y, z, lv, cmap=cmap)
             self.axs[idx].set_title(title)
-            self.axis_setting(cont, lv, plotm="unfilled", **kwargs)
+            self._axis_setting(cont, lv, plotm="unfilled", **kwargs)
 
-        self.fig.suptitle(main_title, y=0.961, ha='center', size=14, weight='bold')
+            # Plot the area border
+            cs = self.axs[idx].tricontourf(x, y, z, addition_lv, colors='none')
+            for c in cs.collections:
+                c.set_edgecolor('black')
+                c.set_linewidth(0.5)
+
+        # self.fig.suptitle(main_title, y=0.961, ha='center', size=14, weight='bold')
+
+        return self.fig
+
+    def plot_tricontourf(self, **kwargs):
+        for idx, (x, y, z, lv, cmap, title, ax_pos) in enumerate(self.points):
+            cont = self.axs[ax_pos[0]][ax_pos[1]].tricontourf(x, y, z, lv, cmap=cmap)
+            self.axs[ax_pos[0]][ax_pos[1]].set_title(title)
+            self._axis_setting(cont, lv, plotm='filled', **kwargs)
+
+        # self.fig.suptitle(main_title, y=0.961, ha='center', size=14, weight='bold')
 
         return self.fig
 
-    def plot_tricontourf(self, main_title, **kwargs):
-        if len(self.points) <= 1:
-            raise PlotFunctionError("self.points have two list more")
 
-        for idx, (x, y, z, lv, cmap, title) in enumerate(self.points):
-            cont = self.axs[idx].tricontourf(x, y, z, lv, cmap=cmap)
-            self.axs[idx].set_title(title)
-            self.axis_setting(cont, lv, plotm='filled', **kwargs)
+class MunsellHuePage:
+    def __init__(self, nrows=1, ncols=1, **kwarg):
+        self.fig, self.ax = plt.subplots(nrows, ncols, **kwarg)
 
-        self.fig.suptitle(main_title, y=0.961, ha='center', size=14, weight='bold')
+    def _axis_setting(self, title=None):
+        # axis x
+        self.ax.set_xlim(0.5, 10.5)
+        self.ax.set_xticks(list(range(1, 11, 1)))
+        self.ax.set_xticklabels([f'/{x}' for x in range(2, 21, 2)])
+        self.ax.set_xlabel('Chroma', labelpad=15)
+
+        # axis y
+        self.ax.set_ylim(0.5, 9.5)
+        self.ax.set_yticks(list(range(1, 10, 1)))
+        self.ax.set_yticklabels([f'{x}/' for x in range(1, 10, 1)])
+        self.ax.set_ylabel('Value', labelpad=15)
+
+        self.ax.tick_params(axis='both', labelsize=12, color="None")
+        self.ax.spines.bottom.set_visible(False)
+        self.ax.spines.left.set_visible(False)
+        self.ax.spines.right.set_visible(False)
+        self.ax.spines.top.set_visible(False)
+
+        self.ax.set_title(title, loc='right', fontsize=28, fontweight='roman')
+        self.ax.set_aspect(aspect='equal', adjustable='box')
+        self.fig.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.1)
+
+    @staticmethod
+    def _get_ctext(de_value):
+        if de_value > 2.0:
+            return "#FD4141"
+        elif 1.0 < de_value <= 2.0:
+            return "#FFF347"
+        else:
+            return "#000000"
+
+    def _text_de(self, x, y, de):
+        for i in range(len(de)):
+            ctext = self._get_ctext(de[i])
+            self.ax.text(x[i], y[i], round(de[i], 1), c=ctext, ha='center', va='center_baseline', fontsize=10)
+
+    @staticmethod
+    def _get_cface(de_value):
+        if de_value > 2.0:
+            return "#000000"
+        elif 1.0 < de_value <= 2.0:
+            return "#5A5A5A"
+        else:
+            return "#E6E6E6"
+
+    def _warn_circle_hint(self, x, y, de):
+        for i in range(len(de)):
+            cface = self._get_cface(de[i])
+            # face_color = np.where(de > 2.0, '#C5C5C5', '#696969')
+            self.ax.scatter(x[i], y[i], s=650, facecolors=cface, edgecolor='w', linewidth=0.9)
+
+    def plot_munsell_hue_page(self, x, y, color, de=None, **kwargs):
+        """
+        **kwargs: title
+        """
+        title = kwargs.get('title', None)
+
+        self.ax.scatter(x, y, c=color, marker='s', s=2000)
+        self._axis_setting(title=title)
+
+        if de is not None:
+            self._text_de(x, y, de)
+            self._warn_circle_hint(x, y, de)
 
         return self.fig
+
+
+class ScatterConfidenceArea:
+    def __init__(self, nrows=1, ncols=1, plot_type='hue', **kwarg):
+        self.fig, self.axs = plt.subplots(nrows, ncols, **kwarg)
+        self.plot_type = plot_type
+
+    def _axis_setting(self):
+        self.axs.set_ylabel("$\Delta$E$_{00}$")
+        # self.fig.subplots_adjust(left=0.1, right=0.88, top=0.9, bottom=0.08)
+
+        match self.plot_type:
+            case 'hue':
+                self.axs.set_xlabel('Hab', labelpad=10)
+                self.axs.set_xlim(0, 365)
+                self.axs.set_xticks(range(0, 361, 30))
+                self.axs.set_ylim(-2, 12)
+
+            case 'value':
+                self.axs.set_xlabel('Value', labelpad=10)
+                self.axs.set_xlim(0.5, 9.5)
+                self.axs.set_xticks(range(1, 10, 1))
+                self.axs.set_xticklabels(['1', '2', '3', "4", '5', '6', '7', '8', '9'])
+                self.axs.set_ylim(-2, 12)
+
+            case 'chroma':
+                self.axs.set_xlabel('Chroma', labelpad=10)
+                self.axs.set_xlim(0.5, 10.5)
+                self.axs.set_xticks(range(1, 11, 1))
+                self.axs.set_xticklabels(['2', '4', '6', "8", '10', '12', '14', '16', '18', '20'])
+
+                self.axs.set_ylim(-2, 14)
+
+    def _common_legend(self):
+        handles, labels = self.axs[0].get_legend_handles_labels()
+        legend = self.fig.legend(handles,
+                                 labels,
+                                 loc='center right',
+                                 title='Confidence\nInterval\n',
+                                 title_fontsize='large')
+        legend.get_title().set_ha('center')
+
+    def plot_scatter(self, x, y, **kwargs):
+
+        match self.plot_type:
+            case 'hue':
+                c = kwargs.get('c', None)
+                label = kwargs.get('label', None)
+
+                self.axs.scatter(x, y, c=c, s=26, alpha=0.4, edgecolor=c, linewidths=0.8, label=label)
+                self.axs.legend(ncols=10, bbox_to_anchor=(0.5, 1.03), loc='center')
+            case 'value':
+                c = kwargs.get('c', None)
+                alpha = kwargs.get('alpha', None)
+
+                self.axs.scatter(x, y, c=c, s=20, alpha=alpha, edgecolor='k', linewidths=0.5)
+            case 'chroma':
+                c = kwargs.get('c', None)
+
+                self.axs.scatter(x, y, c=c, s=20, edgecolor='k', linewidths=0.5)
+
+        self._axis_setting()
+
+        return self.fig
+
+    def plot_confidence_area(self, mean, lower, upper):
+        mean = np.asarray(mean, np.float32)
+        lower = np.asarray(lower, np.float32)
+        upper = np.asarray(upper, np.float32)
+
+        self.axs.plot(mean[:, 0], mean[:, 1], 'b', label='Mean')
+        self.axs.plot(lower[:, 0], lower[:, 1], '-r', label='Mean\n- 2 Std. Dev.')
+        self.axs.plot(upper[:, 0], upper[:, 1], '-g', label='Mean\n+ 2 Std. Dev.')
+        self.axs.fill_between(mean[:, 0], upper[:, 1], lower[:, 1], color="grey", alpha=0.1)
 
 
 class Box:
-    def __init__(self, nrows, ncols, **kwarg):
+    def __init__(self, nrows=1, ncols=1, **kwarg):
         self.fig, self.ax = plt.subplots(nrows, ncols, **kwarg)
 
     @staticmethod
@@ -256,52 +399,6 @@ class Box:
 
         return self.fig
 
-
-class MunsellHuePage:
-    def __init__(self, nrows, ncols, **kwarg):
-        self.fig, self.ax = plt.subplots(nrows, ncols, **kwarg)
-        self.de_threshold = 2.0
-
-    def _axis_setting(self, title):
-
-        self.ax.set_xlim(0.5, 10.5)
-        self.ax.set_xticks(list(range(1, 11, 1)))
-        self.ax.set_xticklabels([f'/{x}' for x in range(2, 21, 2)])
-        self.ax.set_xlabel('Chroma', labelpad=15)
-
-        self.ax.set_ylim(0.5, 9.5)
-        self.ax.set_yticks(list(range(1, 10, 1)))
-        self.ax.set_yticklabels([f'{x}/' for x in range(1, 10, 1)])
-        self.ax.set_ylabel('Value', labelpad=15)
-
-        self.ax.tick_params(axis='both', labelsize=12, color="None")
-        self.ax.spines.bottom.set_visible(False)
-        self.ax.spines.left.set_visible(False)
-        self.ax.spines.right.set_visible(False)
-        self.ax.spines.top.set_visible(False)
-
-        self.ax.set_title(title, loc='right', fontsize=28, fontweight='roman')
-        self.ax.set_aspect(aspect='equal', adjustable='box')
-        self.fig.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.1)
-
-    def _text_de(self, x, y, de):
-        for i in range(len(de)):
-            ctext = 'r' if de[i] > self.de_threshold else 'w'
-            self.ax.text(x[i], y[i], round(de[i], 1), c=ctext, ha='center', va='center_baseline', fontsize=11)
-
-    def _warn_circle_hint(self, x, y, de):
-        face_color = np.where(de > self.de_threshold, '#C5C5C5', '#696969')
-        self.ax.scatter(x, y, s=800, facecolors=face_color, edgecolor='w')
-
-    def plot_munsell_hue_page(self, x, y, color, title, de=None):
-        self.ax.scatter(x, y, c=color, marker='s', s=1700)
-        self._axis_setting(title)
-
-        if de is not None:
-            self._text_de(x, y, de)
-            self._warn_circle_hint(x, y, de)
-
-        return self.fig
 
 
 def save_plt_figure(figure: plt.Figure, write_path, **kwargs):
