@@ -3,18 +3,13 @@ from pathlib import Path
 from colour.difference import delta_E_CIE2000
 import matplotlib.pyplot as plt
 import numpy as np
+# TODO: 還要加上不同檔按重疊色差的直方圖
+plt.rcParams['font.sans-serif'] = ['DFKai-SB']
 
 
 def read_data(ref_path, com_path):
     """
-    Read reference and comparison data from CSV files.
-
-    Args:
-    ref_path (str): Path to the reference CSV file.
-    com_path (str): Path to the comparison CSV file.
-
-    Returns:
-    tuple: Two lists containing Lab values for reference and comparison data.
+    Reads reference and comparison Lab values from CSV files.
     """
     ref_data = utilities.read_csv(ref_path, skip_lines=1)
     com_data = utilities.read_csv(com_path, skip_lines=1)
@@ -27,24 +22,15 @@ def read_data(ref_path, com_path):
 
 def calculate_de2000(ref_lab, com_lab):
     """
-    Calculate delta E 2000 values between reference and comparison Lab values.
-
-    Args:
-    ref_lab (list): List of Lab values for reference data.
-    com_lab (list): List of Lab values for comparison data.
-
-    Returns:
-    list: List of delta E 2000 values.
+    Calculates delta E 2000 values between Lab values.
     """
     return delta_E_CIE2000(ref_lab, com_lab)
 
 
 def plot_histogram(de_2000):
     """
-    Plot histogram of delta E 2000 values with median and mean lines.
-
-    Args:
-    de_2000 (list): List of delta E 2000 values.
+    Plots a histogram of delta E 2000 values with median and mean lines.
+    Optionally takes a title argument.
     """
     # split numbers
     bins = np.arange(0, 11.3, 0.2)
@@ -57,38 +43,42 @@ def plot_histogram(de_2000):
     # mark median and mean number as legend
     median_de = np.median(de_2000)
     mean_de = np.mean(de_2000)
+    min_de = np.min(de_2000)
+    max_de = np.max(de_2000)
 
-    ax.axvline(x=median_de, color='r', linestyle='dashed', linewidth=1,
-               label=f'Median $\Delta E_{{00}}$: {median_de:.2f}')
-    ax.axvline(x=mean_de, color='b', linestyle='dashed', linewidth=1,
-               label=f'Mean $\Delta E_{{00}}$\u2003: {mean_de:.2f}')
+    # ax.axvline(x=median_de, color='r', linestyle='dashed', linewidth=1,
+    #            label=f'Median $\Delta E_{{00}}$: {median_de:.2f}')
+    # ax.axvline(x=mean_de, color='b', linestyle='dashed', linewidth=1,
+    #            label=f'Mean $\Delta E_{{00}}$\u2003: {mean_de:.2f}')
 
     # axis setting
-    ax.set_xlabel('Printed sample $\Delta E_{00}$ from reference sample', labelpad=10)
-    ax.set_ylabel('Numbers of Color Patches', labelpad=10)
+    ax.set_xlabel('印刷樣本相對於參考樣本的 $\Delta E_{00}$ 值', labelpad=10)
+    ax.set_ylabel('色塊數量', labelpad=10)
 
     ax.set_xlim(0, 11.5)
     ax.set_xticks(np.arange(0, 11.5, 0.5))
     ax.set_ylim(0, 85)
 
-    ax.legend(fontsize=10)
+    # ax.legend(fontsize=10)
 
-    return fig
+    return fig, [median_de, mean_de, min_de, max_de]
 
 
-def plot_de_histogram(ref_path, com_path, write_path):
-    """
-    Main function to read data, calculate delta E 2000 values, and plot histogram.
+def plot_de_histogram(ref_path, com_path, write_path, txt_output_path):
 
-    Args:
-    ref_path (str): Path to the reference CSV file.
-    com_path (str): Path to the comparison CSV file.
-    """
     ref_lab, com_lab = read_data(ref_path, com_path)
     de_2000 = calculate_de2000(ref_lab, com_lab)
-    fig = plot_histogram(de_2000)
+    fig, de_lst = plot_histogram(de_2000)
+
+    with open(txt_output_path, "w") as f:
+        f.write(f"Median dE2000: {de_lst[0]:.2f}\n")
+        f.write(f"Mean dE2000: {de_lst[1]:.2f}\n")
+        f.write(f"mix de2000: {de_lst[2]:.2f}\n")
+        f.write(f"max de2000: {de_lst[3]:.2f}\n")
+
     plotting.save_plt_figure(fig, write_path, dpi=1200)
-    # plt.show()
+    plt.show()
+
 
 if __name__ == '__main__':
     ref = r"C:\Users\cghsi\OneDrive\NTUST_CIT\Experiments\Munsell_Reproduction\Dataset_BabelColour_HVC_RGB_Lab_D50\Dataset_BabelColour_HVC_RGB_Lab_D50_50_combine.csv"
@@ -98,9 +88,10 @@ if __name__ == '__main__':
     toner_4c_r = r"C:\Users\cghsi\OneDrive\NTUST_CIT\Experiments\Munsell_Reproduction\SunSui\SunSui_deReport_CSV\4C-R\4C-R_50_combined.csv"
     inkjet = r"C:\Users\cghsi\OneDrive\NTUST_CIT\Experiments\Munsell_Reproduction\Deepblue\NTUST_50_20240315_rgb.csv"
 
-    file_lst = [toner_4c, toner_4c_b, toner_4c_g, toner_4c_r, inkjet]
-    file_name = ['Toner 4C', 'Toner 4C+B', 'Toner 4c+G', 'Toner 4C+R', 'Inkjet']
+    file_lst = [toner_4c, toner_4c_r, toner_4c_g, toner_4c_b, inkjet]
+    file_name = ['Toner 4C', 'Toner 4C+R', 'Toner 4c+G', 'Toner 4C+B', 'Inkjet']
 
     for i in range(len(file_lst)):
         write_path = Path('output') / f"Histogram of DE2000 Value Differences_{file_name[i]}.png"
-        plot_de_histogram(ref, file_lst[i], write_path)
+        txt_output_path = Path('output') / f"Histogram of DE2000 Value Differences_{file_name[i]}.txt"
+        plot_de_histogram(ref, file_lst[i], write_path, txt_output_path)
