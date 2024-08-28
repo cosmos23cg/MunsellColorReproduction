@@ -2,6 +2,9 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 from lib import plotting, utilities
 
+plt.rcParams['font.sans-serif'] = ['Microsoft JhengHei']
+# plt.rcParams['font.family'] = ['DFKai-SB', 'Times New Roman']
+
 
 def group_data(data_lst, group_key):
     result_dict = {'header': data_lst[0]}
@@ -78,7 +81,7 @@ def process_plot_gamut(file_path, gamut, c, ln, m, lb, marker, edge_c, hue_annot
     # ref_data has appended cab in the last. and the first row is header, so start in 1
     a, b = zip(*[(float(x[-3]), float(x[-2])) for x in data[1:]])
 
-    gamut.plot_scatter(a, b, marker=marker, c=c, edge_c=edge_c)
+    gamut.plot_scatter(a, b, marker=marker, c=c, edge_c=edge_c, label=lb)
 
     if hue_annotate is True:
         hue_name = [x[0] for x in hue_name]
@@ -87,7 +90,7 @@ def process_plot_gamut(file_path, gamut, c, ln, m, lb, marker, edge_c, hue_annot
     return max_points
 
 
-def main(input_path, input_path2, write_path):
+def main(input_path, input_path2, write_path, lba, lbb):
     gamut = plotting.Gamut(1, 1, figsize=(8, 8))
 
     ref_points = process_plot_gamut(input_path,
@@ -95,7 +98,7 @@ def main(input_path, input_path2, write_path):
                                     c='royalblue',
                                     ln='-',
                                     m='^',
-                                    lb='Ref',
+                                    lb=lba,
                                     marker='^',
                                     edge_c='blue',
                                     hue_annotate=True)
@@ -104,12 +107,14 @@ def main(input_path, input_path2, write_path):
                                     c='gold',
                                     ln='--',
                                     m='H',
-                                    lb='Inkjet',
+                                    lb=lbb,
                                     marker='H',
                                     edge_c='goldenrod')
 
     gamut.gamut_area(ref_points, com_points)  # Show gamut area
-    fig = gamut.plot_gamut()
+    # fig = gamut.plot_gamut()
+    gamut.axis_setting()
+    fig = gamut.fig
 
     plotting.save_plt_figure(fig, write_path, dpi=1200)
     # plt.show()
@@ -123,5 +128,5 @@ if __name__ == '__main__':
     toner_4c_r = r"C:\Users\cghsi\OneDrive\NTUST_CIT\Experiments\Munsell_Reproduction\SunSui\SunSui_deReport_CSV\4C-R\4C-R_50_combined.csv"
     inkjet = r"C:\Users\cghsi\OneDrive\NTUST_CIT\Experiments\Munsell_Reproduction\Deepblue\NTUST_50_20240315_rgb.csv"
 
-    write_path = Path('output') / 'Printer Patch and Gamut Area (CIELAB)_Inkjet.png'
-    main(ref, inkjet, write_path)
+    write_path = Path('output') / 'Printer Patch-CMYK_InkjetB.png'
+    main(toner_4c, inkjet, write_path, 'Kodak CMYK', 'EPSON')

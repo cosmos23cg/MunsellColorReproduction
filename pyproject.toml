@@ -13,6 +13,7 @@ pymupdf = "^1.23.21"
 easyocr = "^1.7.1"
 opencv-python = "^4.9.0.80"
 pandas = "^2.2.1"
+scipy = "^1.13.0"
 
 
 [build-system]

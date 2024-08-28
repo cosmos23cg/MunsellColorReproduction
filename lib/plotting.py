@@ -18,18 +18,34 @@ class Gamut:
 
     def _basic_axis_setting(self):
         self.axs.set_aspect(aspect='equal', adjustable='box')
-        self.axs.grid(which='both', alpha=0.2)
+        self.axs.grid(which='both', alpha=0.4)
 
         self.axs.set_xlabel("a*", labelpad=10)
         self.axs.set_ylabel("b*", labelpad=10)
+
+        ## close frame line
+        # self.axs.spines['top'].set_color('none')
+        # self.axs.spines['right'].set_color('none')
+        # self.axs.spines['bottom'].set_color('none')
+        # self.axs.spines['left'].set_color('none')
+
+        # x, y axis more thick
+        self.axs.axhline(linewidth=0.7, color='black')
+        self.axs.axvline(linewidth=0.7, color='black')
 
     def axis_setting(self, xlim=(-110, 110), ylim=(-90, 130)):
         self.axs.set_xlim(xlim[0], xlim[1])
         self.axs.set_ylim(ylim[0], ylim[1])
 
-        handles, labels = self.axs.get_legend_handles_labels()
-        new_labels = [f'{label}\u2003: {area[1]:>.1f}%' for label, area in zip(labels, self.area)]
-        self.axs.legend(handles, new_labels, ncols=2, loc='upper center', bbox_to_anchor=(0.5, 1.1), title='Legend & Area ratio')
+        self.axs.legend(ncols=2, loc='upper center', bbox_to_anchor=(0.5, 1.07))
+
+        # handles, labels = self.axs.get_legend_handles_labels()
+        # if handles and labels:
+        #     new_labels = [f'{label}\u2003: {area[1]:>.1f}%' for label, area in zip(labels, self.area)]
+        #     self.axs.legend(handles, new_labels, ncols=2, loc='upper center', bbox_to_anchor=(0.5, 1.1), title='Legend & Area ratio')
+
+
+
 
     def add_hue_annotate(self, ant_cor, ant_lst):
         for i in range(len(ant_lst)):
@@ -38,9 +54,9 @@ class Gamut:
             annotate = ant_lst[i]
 
             if x > 0 and y > 0:
-                xytext = (16, 3)  # Quadrant 1
+                xytext = (16, 5)  # Quadrant 1
             elif y > 0 > x:
-                xytext = (-15, 3)  # Quadrant 2
+                xytext = (-15, 15)  # Quadrant 2
             elif x < 0 and y < 0:
                 xytext = (-13, -16)  # Quadrant 3
             else:
@@ -91,8 +107,8 @@ class Gamut:
 
         return self.fig
 
-    def plot_scatter(self, x, y, marker, c, edge_c):
-        self.axs.scatter(x, y, s=18, marker=marker, c=c, edgecolor=edge_c, linewidths=1.0)
+    def plot_scatter(self, x, y, marker, c, edge_c, label):
+        self.axs.scatter(x, y, s=20, marker=marker, c=c, edgecolor=edge_c, linewidths=1.0, label=label)
 
 
 class Contour:
@@ -202,6 +218,7 @@ class MunsellHuePage:
         self.ax.set_yticklabels([f'{x}/' for x in range(1, 10, 1)])
         self.ax.set_ylabel('Value', labelpad=15)
 
+        # other setting
         self.ax.tick_params(axis='both', labelsize=12, color="None")
         self.ax.spines.bottom.set_visible(False)
         self.ax.spines.left.set_visible(False)
@@ -241,6 +258,21 @@ class MunsellHuePage:
             # face_color = np.where(de > 2.0, '#C5C5C5', '#696969')
             self.ax.scatter(x[i], y[i], s=650, facecolors=cface, edgecolor='w', linewidth=0.9)
 
+    def _legend_setting(self):
+        legend_elements = [
+            plt.scatter([], [], color='#000000', label=r'$\Delta E_{00}$ > 2', s=200),
+            plt.scatter([], [], color='#5A5A5A', label=r'1 < $\Delta E_{00}$ <= 2', s=200),
+            plt.scatter([], [], color='#E6E6E6', label=r'$\Delta E_{00}$ <= 1', s=200)
+        ]
+        # Customize the legend text colors
+        legend = self.ax.legend(handles=legend_elements, loc='upper left', bbox_to_anchor=(0.9, 1), fontsize=12)
+        for text, color in zip(legend.get_texts(), ['#FD4141', '#FFF347', '#000000']):
+            text.set_color(color)
+
+        frame = legend.get_frame()
+        frame.set_facecolor('#787878')  # Light grey background
+
+
     def plot_munsell_hue_page(self, x, y, color, de=None, **kwargs):
         """
         **kwargs: title
@@ -254,6 +286,9 @@ class MunsellHuePage:
             self._text_de(x, y, de)
             self._warn_circle_hint(x, y, de)
 
+            # legend setting
+            self._legend_setting()
+
         return self.fig
 
 
@@ -266,19 +301,23 @@ class ScatterConfidenceArea:
         self.axs.set_ylabel("$\Delta$E$_{00}$")
         # self.fig.subplots_adjust(left=0.1, right=0.88, top=0.9, bottom=0.08)
 
+        self.axs.set_ylim(-0.1, 11.5)
+
         match self.plot_type:
             case 'hue':
-                self.axs.set_xlabel('Hab', labelpad=10)
-                self.axs.set_xlim(0, 365)
-                self.axs.set_xticks(range(0, 361, 30))
-                self.axs.set_ylim(-2, 12)
+                # self.axs.set_xlabel('Hab', labelpad=10)
+                # self.axs.set_xlim(0, 365)
+                # self.axs.set_xticks(range(0, 361, 30))
+                self.axs.set_xlabel('Hue', labelpad=10)
+                self.axs.set_xlim(0.5, 10.5)
+                self.axs.set_xticks(range(1, 11, 1))
+                self.axs.set_xticklabels(['R', 'YR', 'Y', "GY", 'G', 'BG', 'B', 'PB', 'P', 'RP'])
 
             case 'value':
                 self.axs.set_xlabel('Value', labelpad=10)
                 self.axs.set_xlim(0.5, 9.5)
                 self.axs.set_xticks(range(1, 10, 1))
                 self.axs.set_xticklabels(['1', '2', '3', "4", '5', '6', '7', '8', '9'])
-                self.axs.set_ylim(-2, 12)
 
             case 'chroma':
                 self.axs.set_xlabel('Chroma', labelpad=10)
@@ -286,35 +325,24 @@ class ScatterConfidenceArea:
                 self.axs.set_xticks(range(1, 11, 1))
                 self.axs.set_xticklabels(['2', '4', '6', "8", '10', '12', '14', '16', '18', '20'])
 
-                self.axs.set_ylim(-2, 14)
-
-    def _common_legend(self):
-        handles, labels = self.axs[0].get_legend_handles_labels()
-        legend = self.fig.legend(handles,
-                                 labels,
-                                 loc='center right',
-                                 title='Confidence\nInterval\n',
-                                 title_fontsize='large')
-        legend.get_title().set_ha('center')
-
     def plot_scatter(self, x, y, **kwargs):
-
         match self.plot_type:
             case 'hue':
                 c = kwargs.get('c', None)
                 label = kwargs.get('label', None)
+                self.axs.scatter(x, y, c=c, marker='p', s=10, alpha=0.6, edgecolor=c, linewidths=0.8, label=label)
 
-                self.axs.scatter(x, y, c=c, s=26, alpha=0.4, edgecolor=c, linewidths=0.8, label=label)
-                self.axs.legend(ncols=10, bbox_to_anchor=(0.5, 1.03), loc='center')
+                if label is not None:
+                    self.axs.legend(ncols=10, bbox_to_anchor=(0.5, 1.03), loc='center')
             case 'value':
                 c = kwargs.get('c', None)
                 alpha = kwargs.get('alpha', None)
 
-                self.axs.scatter(x, y, c=c, s=20, alpha=alpha, edgecolor='k', linewidths=0.5)
+                self.axs.scatter(x, y, c=c, marker='p', s=10, alpha=alpha, edgecolor='k', linewidths=0.5)
             case 'chroma':
                 c = kwargs.get('c', None)
 
-                self.axs.scatter(x, y, c=c, s=20, edgecolor='k', linewidths=0.5)
+                self.axs.scatter(x, y, c=c, marker='p', s=10, edgecolor='k', linewidths=0.5, alpha=0.4)
 
         self._axis_setting()
 
@@ -325,10 +353,12 @@ class ScatterConfidenceArea:
         lower = np.asarray(lower, np.float32)
         upper = np.asarray(upper, np.float32)
 
-        self.axs.plot(mean[:, 0], mean[:, 1], 'b', label='Mean')
-        self.axs.plot(lower[:, 0], lower[:, 1], '-r', label='Mean\n- 2 Std. Dev.')
-        self.axs.plot(upper[:, 0], upper[:, 1], '-g', label='Mean\n+ 2 Std. Dev.')
+        self.axs.plot(mean[:, 0], mean[:, 1], 'dimgrey', label='Mean')
+        self.axs.plot(lower[:, 0], lower[:, 1], linestyle='-', c='silver', label='Mean\n- 2 Std. Dev.')
+        self.axs.plot(upper[:, 0], upper[:, 1], linestyle='-', c='silver', label='Mean\n+ 2 Std. Dev.')
         self.axs.fill_between(mean[:, 0], upper[:, 1], lower[:, 1], color="grey", alpha=0.1)
+
+        return self.fig
 
 
 class Box:
@@ -398,7 +428,6 @@ class Box:
         self._axes_setting(xlabel=write_name, ylabel='dE2000')
 
         return self.fig
-
 
 
 def save_plt_figure(figure: plt.Figure, write_path, **kwargs):

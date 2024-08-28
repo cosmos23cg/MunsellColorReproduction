@@ -5,24 +5,10 @@ import re
 import pandas as pd
 from pathlib import Path
 from colour.difference import delta_E_CIE2000, delta_E_CIE1976
+from lib import error
 
 
-class ListLenMismatchErr(Exception):
-    """
-    Exception raised when the lengths of two lists are not equal.
-    """
-    pass
-
-
-class CSVreader:
-    def read_csv(self, file_path):
-        with open(file_path, 'r') as file:
-            reader = csv.reader(file)
-            next(reader)
-            return [line for line in reader]
-
-
-class ColourComparator(CSVreader):
+class ColourComparator:
     """
     function:
     CIE_2000()
@@ -38,13 +24,19 @@ class ColourComparator(CSVreader):
 
     def _check_lst_len(self):
         if len(self.ref_colour_lst) != len(self.com_colour_lst):
-            raise ListLenMismatchErr('Error: The number of colors in reference and comparison lists are different.')
+            raise error.ListLenMismatchErr('Error: The number of colors in reference and comparison lists are different.')
 
     def _CIE_1976_Cab(self, input_lst):
         return list(map(lambda x: math.sqrt((float(x[-2]) ** 2) + (float(x[-1]) ** 2)), input_lst))
 
     def _CIE_1976_hab(self, input_lst):
         return list(map(lambda x: math.atan(float(x[-1]) / float(x[-2])), input_lst))
+
+    def read_csv(self, file_path):
+        with open(file_path, 'r') as file:
+            reader = csv.reader(file)
+            next(reader)
+            return [line for line in reader]
 
     def CIE_2000(self) -> list:
         self._check_lst_len()
@@ -163,6 +155,15 @@ def chroma_reindex(input_df: pd.DataFrame):
     return input_df.sort_index()
 
 
+def save_csv(save_path, write_lst, header=None):
+    with open(save_path, 'w', newline="", encoding='utf-8') as csvfile:
+        writer = csv.writer(csvfile)
+        if header is not None:
+            writer.writerow(header)
+        for lst in write_lst:
+            writer.writerow(lst)
+
+
 def main(ref_path, com_path):
     # Calculate the De2000, delta l*, C_ab, H_ab and merge to
     comparator = ColourComparator(ref_path, com_path)
@@ -208,17 +209,22 @@ def main(ref_path, com_path):
 
     header = ['Hue', 'Value', 'Chroma', 'R', 'G', 'B', 'L*', 'a*', 'b*', 'De2000', 'ΔL*', 'ΔCab', 'ΔHab', '', '',
               'avg', 'De2000', 'ΔL*', 'ΔCab', 'ΔHab', '', '', 'std', 'De2000', 'ΔL*', 'ΔCab', 'ΔHab']
+
     sf_f = Path('output') / (com_path.stem + '_delta.csv')
-    with open(sf_f, 'w', newline="", encoding='utf-8') as csvfile:
-        writer = csv.writer(csvfile)
-        writer.writerow(header)
-        for lst in merged_lst:
-            writer.writerow(lst)
+    save_csv(sf_f, merged_lst, header)
+
 
 
 if __name__ == '__main__':
-    ref_path = Path(r"C:\Users\cghsi\OneDrive\NTUST_CIT\Experiments\Munsell_Reproduction"
-                    r"\Dataset_BabelColour_HVC_RGB_Lab_D50\Dataset_BabelColour_HVC_RGB_Lab_D50_50_combine.csv")
+    ref = Path(r"C:\Users\cghsi\OneDrive\NTUST_CIT\Experiments\Munsell_Reproduction\Dataset_BabelColour_HVC_RGB_Lab_D50\Dataset_BabelColour_HVC_RGB_Lab_D50_50_combine.csv")
+    toner_4c = Path(r"C:\Users\cghsi\OneDrive\NTUST_CIT\Experiments\Munsell_Reproduction\SunSui\SunSui_deReport_CSV\4C\4C_50_combined.csv")
+    toner_4c_b = Path(r"C:\Users\cghsi\OneDrive\NTUST_CIT\Experiments\Munsell_Reproduction\SunSui\SunSui_deReport_CSV\4C-B_unfinished\4C-B_unfinished_50_combined.csv")
+    toner_4c_g = Path(r"C:\Users\cghsi\OneDrive\NTUST_CIT\Experiments\Munsell_Reproduction\SunSui\SunSui_deReport_CSV\4C-G_unfinished\4C-G_unfinished_50_combined.csv")
+    toner_4c_r = Path(r"C:\Users\cghsi\OneDrive\NTUST_CIT\Experiments\Munsell_Reproduction\SunSui\SunSui_deReport_CSV\4C-R\4C-R_50_combined.csv")
+    inkjet = Path(r"C:\Users\cghsi\OneDrive\NTUST_CIT\Experiments\Munsell_Reproduction\Deepblue\NTUST_50_20240315_rgb.csv")
 
-    com_path = Path(r"C:\Users\cghsi\OneDrive\NTUST_CIT\Experiments\Munsell_Reproduction\SunSui\SunSui_deReport_CSV\4C-R\4C-R_50_combine.csv")
-    main(ref_path, com_path)
+    file_lst = [toner_4c, toner_4c_b, toner_4c_g, toner_4c_r, inkjet]
+    file_name = ['Toner 4C', 'Toner 4C+B', 'Toner 4c+G', 'Toner 4C+R', 'Inkjet']
+
+    for i in range(len(file_lst)):
+        main(ref, file_lst[i])

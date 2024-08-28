@@ -1,6 +1,7 @@
+% This script plot ICC(device) gamut in uv diagram.  
+
 clear;
 
-%% Main script
 % Plot chromaticity
 figure("Units","inches","Position",[1,1,7,7]);
 plotChromaticityDiagram();
@@ -24,63 +25,34 @@ AdobeRGB = [255 0 0;
 adobe_icc_path = "C:\Windows\System32\spool\drivers\color\AdobeRGB1998.icc";
 adobe_plot = plotRGBGamutArea(adobe_icc_path, AdobeRGB, '-', 'red', 1.3);
 
-% Plot NXP CMYK
-% NXP CMYK
-% cmyk_rgb = [0 1 1 0; % r
-%             0 1 0 0; % m
-%             1 1 0 0; % b
-%             1 0 0 0; % c
-%             1 0 1 0; % g
-%             0 0 1 0]; % y
-% printer_icc_path = "C:\Users\cghsi\OneDrive\NTUST_CIT\Experiments\Munsell_Reproduction\ICC\NXP_CMYK_2Glossy_GCR.icm";
-% printer_plot = plotCMYKGamutArea(printer_icc_path, cmyk_rgb, '--', 'black', 1.3);
-
-% NXP CMYK+B
-% cmyk_b_rgb = [0 1 1 0 0; % r
-%             0 1 0 0 0; % m
-%             1 1 0 0 1; % b
-%             1 0 0 0 0; % c
-%             1 0 1 0 0; % g
-%             0 0 1 0 0]; % y
-% 
-% printer_icc_path = "C:\Users\cghsi\OneDrive\NTUST_CIT\Experiments\Munsell_Reproduction\ICC\NXP_BLUE_2Glossy_GCR.icm";
-% printer_plot = plotCMYKGamutArea(printer_icc_path, cmyk_b_rgb, '--', 'black', 1.3);
+% CMYK data
+[C, M, Y, S] = ndgrid(0:0.05:1);
+CMYK = [C(:) M(:) Y(:) zeros(size(C(:)))];
+CMYKS = [C(:) M(:) Y(:) zeros(size(C(:))) S(:)]; 
 
 
-% NXP CMYK+G
-% cmyk_g_rgb = [0 1 1 0 0; % r
-%             0 1 0 0 0; % m
-%             1 1 0 0 0; % b
-%             1 0 0 0 0; % c
-%             1 0 1 0 1; % g
-%             0 0 1 0 0]; % y
-% 
-% printer_icc_path = "C:\Users\cghsi\OneDrive\NTUST_CIT\Experiments\Munsell_Reproduction\ICC\NXP_GREEN_2Glossy_GCR.icm";
-% printer_plot = plotCMYKGamutArea(printer_icc_path, cmyk_g_rgb, '--', 'black', 1.3);
+% Kodak NEXFINITY SX2700 CMYK
+% printer_icc_path = "C:\Users\cghsi\OneDrive\NTUST_CIT\Lab\Munsell_Reproduction\ICC\NXP_CMYK_2Glossy_GCR.icm";
+% printer_plot = plotCMYKGamutArea(printer_icc_path, CMYK, '--', 'black', 1.3);
 
-% NXP CMYK+R
-% cmyk_r_rgb = [0 1 1 0 1; % r
-%             0 1 0 0 0; % m
-%             1 1 0 0 0; % b
-%             1 0 0 0 0; % c
-%             1 0 1 0 0; % g
-%             0 0 1 0 0]; % y
-% 
-% printer_icc_path = "C:\Users\cghsi\OneDrive\NTUST_CIT\Experiments\Munsell_Reproduction\ICC\NXP_RED_2Glossy_GCR.icm";
-% printer_plot = plotCMYKGamutArea(printer_icc_path, cmyk_r_rgb, '--', 'black', 1.3);
+% Kodak NEXFINITY SX2700 CMYKB
+% printer_icc_path = "C:\Users\cghsi\OneDrive\NTUST_CIT\Lab\Munsell_Reproduction\ICC\NXP_BLUE_2Glossy_GCR.icm";
+% printer_plot = plotCMYKGamutArea(printer_icc_path, CMYKS, '--', 'black', 1.3);
 
-% EPSON 9700
-cmyk_rgb = [0 1 1 0; % r
-            0 1 0 0; % m
-            1 1 0 0; % b
-            1 0 0 0; % c
-            1 0 1 0; % g
-            0 0 1 0]; % y
-printer_icc_path = "C:\Users\cghsi\OneDrive\NTUST_CIT\Experiments\Munsell_Reproduction\ICC\epson9700_IT8.7-4 CMYK random_Chart 1617 Patches_08-03-24.icm";
-printer_plot = plotCMYKGamutArea(printer_icc_path, cmyk_rgb, '--', 'black', 1.3);
+% Kodak NEXFINITY SX2700 CMYKG
+% printer_icc_path = "C:\Users\cghsi\OneDrive\NTUST_CIT\Lab\Munsell_Reproduction\ICC\NXP_GREEN_2Glossy_GCR.icm";
+% printer_plot = plotCMYKGamutArea(printer_icc_path, CMYKS, '--', 'black', 1.3);
+
+% Kodak NEXFINITY SX2700 CMYKR
+% printer_icc_path = "C:\Users\cghsi\OneDrive\NTUST_CIT\Lab\Munsell_Reproduction\ICC\NXP_RED_2Glossy_GCR.icm";
+% printer_plot = plotCMYKGamutArea(printer_icc_path, CMYKS, '--', 'black', 1.3);
+
+% Epson Stylus PRO 9700
+printer_icc_path = "C:\Users\cghsi\OneDrive\NTUST_CIT\Lab\Munsell_Reproduction\ICC\epson9700_IT8.7-4 CMYK random_Chart 1617 Patches_08-03-24.icm";
+printer_plot = plotCMYKGamutArea(printer_icc_path, CMYK, '--', 'black', 1.3);
 
 % Add legend
-legend([srgb_plot, adobe_plot, printer_plot], {'sRGB / Rec.709', 'Adobe RGB', 'EPSON 9700'}, 'Location', 'northeast');
+legend([srgb_plot, adobe_plot, printer_plot], {'sRGB / Rec.709', 'Adobe RGB', 'Epson Stylus PRO 9700'}, 'Location', 'northeast');
 
 hold off;
 
@@ -108,6 +80,7 @@ function plotChromaticityDiagram()
          'w', 'FaceAlpha', 0.5, 'EdgeColor', 'none');
 end
 
+%% Helper functions
 function spec_uv = getSpectrumLocusData(filePath)
     spec_loc = readtable(filePath);
 
@@ -128,6 +101,7 @@ function spec_uv = getSpectrumLocusData(filePath)
     text(spec_uv(280, 1) + 0.005, spec_uv(280, 2) + 0.02, "680", "FontSize", 8, "HorizontalAlignment", "left");
 end
 
+%% Helper functions
 function plotHandle = plotRGBGamutArea(profile_path, rgb_values, line_style, line_color, line_width)
     % Read ICC
     profile = iccread(profile_path);
@@ -147,31 +121,34 @@ function plotHandle = plotRGBGamutArea(profile_path, rgb_values, line_style, lin
     plotHandle = plot(u_values, v_values, 'LineStyle', line_style, 'Color', line_color, 'LineWidth', line_width);
 end
 
+%% Helper functions
 function plotHandle = plotCMYKGamutArea(profile_path, cmyk_values, line_style, line_color, line_width)
     % Read ICC
     profile = iccread(profile_path);
     cform = makecform("clut", profile, "AToB0");
 
     % CMYK to Lab
-    npx_lab = applycform(cmyk_values, cform);
-    npx_lab = lab2double(npx_lab);
+    gamut_lab = applycform(cmyk_values, cform);
+    gamut_lab = lab2double(gamut_lab);
 
     % Lab to XYZ
-    npx_XYZ = lab2xyz(npx_lab, "WhitePoint", "d50");
+    gamut_XYZ = lab2xyz(gamut_lab, "WhitePoint", "d50");
 
-    % XYZ to u`v`
+    % XYZ to u'v'
     cform = makecform("xyz2upvpl");
-    npx_uv = applycform(npx_XYZ, cform);
+    gamut_uv = applycform(gamut_XYZ, cform);
+    gamut_u = gamut_uv(:, 1);
+    gamut_v = gamut_uv(:, 2);
 
-    % Duplicate the first points to the last for closing the plot area
-    u_values = vertcat(npx_uv(:, 1), npx_uv(1, 1));
-    v_values = vertcat(npx_uv(:, 2), npx_uv(1, 2));
-    area = calculatePolygonArea(u_values, v_values);
+    % Calculate and plot boundary
+    b = boundary(gamut_u, gamut_v);  % Corrected line
+    plotHandle = plot(gamut_u(b), gamut_v(b), 'LineStyle', line_style, 'Color', line_color, 'LineWidth', line_width);
+
+    area = calculatePolygonArea(gamut_u(b), gamut_v(b));
     disp(area)
-
-    plotHandle = plot(u_values, v_values, 'LineStyle', line_style, 'Color', line_color, 'LineWidth', line_width);
 end
 
+%% Helper functions
 function area = calculatePolygonArea(u, v)
     % Calculate the polygon area using the shoelace formula
     n = length(u);

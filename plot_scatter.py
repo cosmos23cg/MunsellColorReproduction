@@ -123,11 +123,13 @@ def chroma_method(data0, data1, prop):
 
         scatter_confidence.plot_scatter(xs, de2000, c='k', alpha=s_alpha)
 
-        if not len(de2000) < 4:
+        if not len(de2000) < 2:
             m, l, u = calculate_confidence_interval(de2000)
             ms.append([x, m])
             ls.append([x, l])
             us.append([x, u])
+
+
 
         s_alpha -= 0.08
 
@@ -176,18 +178,18 @@ def plot_scatter_confidence(data_path_1, data_path_2, prop, write_fig_path, writ
     plotting.save_plt_figure(fig, write_fig_path, dpi=1200)
     write_to_txt(write_txt_path, mean_lower_upper)
 
-    plt.show()
+    # plt.show()
 
 
 
 if __name__ == '__main__':
     # Plot contour or box whisker
-    ref = r"C:\Users\cghsi\OneDrive\NTUST_CIT\Experiments\Munsell_Reproduction\Dataset_BabelColour_HVC_RGB_Lab_D50\Dataset_BabelColour_HVC_RGB_Lab_D50_50_combine.csv"
-    toner_4c = r"C:\Users\cghsi\OneDrive\NTUST_CIT\Experiments\Munsell_Reproduction\SunSui\SunSui_deReport_CSV\4C\4C_50_combined.csv"
-    toner_4c_b = r"C:\Users\cghsi\OneDrive\NTUST_CIT\Experiments\Munsell_Reproduction\SunSui\SunSui_deReport_CSV\4C-B_unfinished\4C-B_unfinished_50_combined.csv"
-    toner_4c_g = r"C:\Users\cghsi\OneDrive\NTUST_CIT\Experiments\Munsell_Reproduction\SunSui\SunSui_deReport_CSV\4C-G_unfinished\4C-G_unfinished_50_combined.csv"
-    toner_4c_r = r"C:\Users\cghsi\OneDrive\NTUST_CIT\Experiments\Munsell_Reproduction\SunSui\SunSui_deReport_CSV\4C-R\4C-R_50_combined.csv"
-    inkjet = r"C:\Users\cghsi\OneDrive\NTUST_CIT\Experiments\Munsell_Reproduction\Deepblue\NTUST_50_20240315_rgb.csv"
+    ref = r"C:\Users\cghsi\OneDrive\NTUST_CIT\Lab\Munsell_Reproduction\Dataset_BabelColour_HVC_RGB_Lab_D50\Dataset_BabelColour_HVC_RGB_Lab_D50_50_combine.csv"
+    toner_4c = r"C:\Users\cghsi\OneDrive\NTUST_CIT\Lab\Munsell_Reproduction\SunSui\SunSui_deReport_CSV\4C\4C_50_combined.csv"
+    toner_4c_b = r"C:\Users\cghsi\OneDrive\NTUST_CIT\Lab\Munsell_Reproduction\SunSui\SunSui_deReport_CSV\4C-B_unfinished\4C-B_unfinished_50_combined.csv"
+    toner_4c_g = r"C:\Users\cghsi\OneDrive\NTUST_CIT\Lab\Munsell_Reproduction\SunSui\SunSui_deReport_CSV\4C-G_unfinished\4C-G_unfinished_50_combined.csv"
+    toner_4c_r = r"C:\Users\cghsi\OneDrive\NTUST_CIT\Lab\Munsell_Reproduction\SunSui\SunSui_deReport_CSV\4C-R\4C-R_50_combined.csv"
+    inkjet = r"C:\Users\cghsi\OneDrive\NTUST_CIT\Lab\Munsell_Reproduction\Deepblue\NTUST_50_20240315_rgb.csv"
 
     file_lst = [toner_4c, toner_4c_b, toner_4c_g, toner_4c_r, inkjet]
     file_name = ['Toner_4C', 'Toner_4C+B', 'Toner_4c+G', 'Toner_4C+R', 'Inkjet']

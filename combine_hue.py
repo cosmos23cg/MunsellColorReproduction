@@ -68,7 +68,7 @@ def main(dir_path):
     combine_csv_ref = CombineCSV()
     ref_dict = combine_csv_ref.read_file(dir_p, '.csv')
     ref_dir_parts = dir_p.parts
-    ref_write_p = Path("output") / (ref_dir_parts[-2] + "_" + ref_dir_parts[-1] + "_combine.csv")
+    ref_write_p = Path("output") / (ref_dir_parts[-2] + "_" + ref_dir_parts[-1] + "_combined.csv")
     save_csv(ref_write_p, ref_dict)
 
 
